@@ -21,7 +21,7 @@ Exceptions introduites, chacune parce que le socle ne couvre pas le besoin :
 
 | Besoin | Outil | Justification |
 |---|---|---|
-| Inférence ML | torch CPU, torchvision, ultralytics, fast-plate-ocr, opencv-python-headless | Aucun outil d'IA dans le socle ; cœur du produit. Confiné aux images `ml` et `trainer`. |
+| Inférence ML | torch CPU, torchvision, ultralytics, fast-plate-ocr[onnx] (OCR `cct-s-v2-global-model`, en RGB, confiance par caractère), opencv-python (entraîné par ultralytics, d'où `libgl1` dans l'image) | Aucun outil d'IA dans le socle ; cœur du produit. Confiné aux images `ml` et `trainer`. Vérifié le 23 octobre 2026 : résolution sur Python 3.12, torch 2.14 CPU, p95 < 350 ms par image sur 4 threads. |
 | Authentification SaaS | PyJWT, argon2-cffi | Le socle ne prévoit pas d'auth ; obligatoire en multi-locataires. |
 | Stockage d'images | boto3 vers un S3 compatible : **Garage** en dev/démo, S3 managé en production | Les images n'ont pas leur place en base relationnelle. MinIO, prévu initialement, n'est plus distribué (images retirées de Docker Hub et Quay en septembre 2026, projet archivé, dernière image sans correctif de sécurité) : Garage est maintenu, léger, et s'initialise par son API d'administration. |
 | Registre de modèles | MLflow (image épinglée, base dédiée, artefacts sur le S3 compatible) | Le réentraînement est une fonctionnalité vendue. |

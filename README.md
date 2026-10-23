@@ -17,16 +17,21 @@ Plateforme SaaS de contrôle d'accès parking par lecture de plaque, avec vérif
 ## Démarrage
 
 ```bash
-make init      # crée .env depuis .env.example et construit les images
-make up        # démarre db, backend, frontend, garage
-make health    # état des services
+make init              # crée .env depuis .env.example et construit les images
+make ml-fetch-weights  # télécharge les poids des modèles (Release GitHub) dans ml/weights
+make up                # démarre db, backend, frontend, ml, garage
+make health            # état des services
+make backend-seed      # jeu de démonstration fictif
 ```
 
 Avant le premier `make up`, remplacer dans `.env` les valeurs `change-me` (mots de passe, secrets Garage : les commandes de génération sont en commentaire).
 
 - API : http://localhost:8001/api/docs
 - Back-office : http://localhost:5173
+- Service ML : http://localhost:8002/docs (`make ml-bench` mesure la latence par étape)
 - S3 local (Garage) : http://localhost:3900
+
+Les images de `backend/app/seed/demo_images/` sont des photos libres dont la plaque a été remplacée par une plaque fictive (voir `ATTRIBUTIONS.md` dans ce dossier).
 
 `make help` liste toutes les commandes. Tout passe par `docker compose exec` : rien ne s'exécute hors conteneur.
 

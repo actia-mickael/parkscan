@@ -5,7 +5,8 @@ FRONTEND := $(COMPOSE) exec frontend
 
 .PHONY: help init up down restart logs ps build clean health \
         backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
-        frontend-shell frontend-typecheck db-shell
+        frontend-shell frontend-typecheck db-shell \
+        ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -72,3 +73,35 @@ frontend-typecheck: ## Vérifie les types TypeScript
 
 db-shell: ## Ouvre psql sur la base
 	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-parkscan} -d $${POSTGRES_DB:-parkscan}
+
+ML := $(COMPOSE) exec ml
+WEIGHTS_BASE_URL ?= https://github.com/actia-mickael/parkscan/releases/download/weights-v1
+
+ml-shell: ## Ouvre un shell dans le service ML
+	$(ML) bash
+
+ml-lint: ## Lint du service ML (ruff)
+	$(ML) ruff check .
+	$(ML) ruff format --check .
+
+ml-format: ## Formate le service ML (ruff)
+	$(ML) ruff check --fix .
+	$(ML) ruff format .
+
+ml-test: ## Tests du service ML (pipeline simulé ; vrais modèles si poids et images présents)
+	$(ML) pytest -q
+
+ml-logs: ## Journaux du service ML
+	$(COMPOSE) logs -f --tail=100 ml
+
+ml-reload: ## Recharge les modèles du service ML sans redémarrage
+	@curl -fsS -X POST http://localhost:$${ML_PORT:-8002}/models/reload -H "X-Internal-Token: $$(grep '^INTERNAL_TOKEN=' .env | cut -d= -f2)" | head -c 600; echo
+
+ml-bench: ## Banc de latence : 20 appels /infer sur les images de démo, p50 et p95 par étape
+	$(ML) python scripts/bench.py --n 20 /opt/demo_images
+
+ml-fetch-weights: ## Télécharge les poids produit (détecteur de plaque, classifieur de marques) dans ml/weights
+	@mkdir -p ml/weights
+	@for f in plate_detector.pt brand_classifier.pth; do \
+	  test -f ml/weights/$$f && echo "ml/weights/$$f présent" || curl -fL -o ml/weights/$$f "$(WEIGHTS_BASE_URL)/$$f"; \
+	done

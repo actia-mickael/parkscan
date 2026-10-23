@@ -1,7 +1,7 @@
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Site, Tenant, User
+from app.db.models import Brand, Site, Tenant, User
 from tests.conftest import auth_headers, make_resident, make_site
 
 
@@ -13,8 +13,13 @@ async def _create_resident(client: AsyncClient, user: User, site: Site, **extra:
 
 
 async def test_manager_creates_resident_and_vehicle_with_normalized_plate(
-    client: AsyncClient, manager: User, site: Site
+    client: AsyncClient, db_session: AsyncSession, manager: User, site: Site
 ) -> None:
+    # Le référentiel de marques n'est pas chargé dans une base de test vierge.
+    if await db_session.get(Brand, "renault") is None:
+        db_session.add(Brand(slug="renault", display_name="Renault"))
+        await db_session.commit()
+
     resident = await _create_resident(client, manager, site, email="Camille@Demo.example")
     assert resident["email"] == "camille@demo.example"
 

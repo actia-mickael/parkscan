@@ -63,6 +63,31 @@ services:
     networks:
       - parkscan_net
 
+  # Service d'inférence (torch CPU). Les poids produit sont dans ./ml/weights (hors git).
+  ml:
+    build:
+      context: ./ml
+      target: dev
+    environment:
+      ML_APP_ENV: ${APP_ENV:-dev}
+      ML_INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me-internal-token}
+      ML_TORCH_THREADS: ${ML_TORCH_THREADS:-4}
+      WATCHFILES_FORCE_POLLING: ${WATCHFILES_FORCE_POLLING:-true}
+    ports:
+      - "${ML_PORT:-8002}:8002"
+    volumes:
+      - ./ml:/app
+      # Images de démonstration (tests sur vrais modèles, banc de latence)
+      - ./backend/app/seed/demo_images:/opt/demo_images:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+    networks:
+      - parkscan_net
+
   # Stockage objets compatible S3 (dev / démo). En production : S3 managé.
   garage:
     image: dxflrs/garage:v2.4.1
