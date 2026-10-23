@@ -10,6 +10,7 @@ from app import __version__
 from app.api import (
     api_keys,
     auth,
+    dashboard,
     health,
     ingest,
     mismatches,
@@ -73,5 +74,6 @@ for router in (
     ingest.router,
     passages.router,
     mismatches.router,
+    dashboard.router,
 ):
     app.include_router(router, prefix=API_PREFIX)

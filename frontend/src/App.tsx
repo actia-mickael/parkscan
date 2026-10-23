@@ -1,46 +1,65 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
-import { getHealth } from "./api/health";
-import type { HealthResponse } from "./types/api";
+import Layout from "@/components/Layout";
+import DashboardPage from "@/pages/DashboardPage";
+import LoginPage from "@/pages/LoginPage";
+import MismatchesPage from "@/pages/MismatchesPage";
+import PassageDetailPage from "@/pages/PassageDetailPage";
+import PassagesPage from "@/pages/PassagesPage";
+import ResidentDetailPage from "@/pages/ResidentDetailPage";
+import ResidentsPage from "@/pages/ResidentsPage";
+import SiteDetailPage from "@/pages/SiteDetailPage";
+import SitesPage from "@/pages/SitesPage";
+import UsersPage from "@/pages/UsersPage";
+import VehiclesPage from "@/pages/VehiclesPage";
+import { useAuthStore } from "@/stores/authStore";
 
-type Status = { kind: "loading" } | { kind: "ok"; data: HealthResponse } | { kind: "error"; message: string };
+function RequireAuth() {
+  const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
+  const location = useLocation();
+  if (status !== "ready") {
+    return <p className="p-6 text-sm text-slate-400">Chargement de la session…</p>;
+  }
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  return <Outlet />;
+}
+
+function RequireAdmin() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role !== "operator_admin") return <Navigate to="/" replace />;
+  return <Outlet />;
+}
 
 export default function App() {
-  const [status, setStatus] = useState<Status>({ kind: "loading" });
+  const bootstrap = useAuthStore((s) => s.bootstrap);
+  const status = useAuthStore((s) => s.status);
 
   useEffect(() => {
-    getHealth()
-      .then((res) => setStatus({ kind: "ok", data: res.data }))
-      .catch((err: unknown) =>
-        setStatus({ kind: "error", message: err instanceof Error ? err.message : "erreur inconnue" }),
-      );
-  }, []);
+    if (status === "idle") void bootstrap();
+  }, [status, bootstrap]);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-      <div className="max-w-md w-full rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
-        <h1 className="text-3xl font-semibold tracking-tight">ParkScan AI</h1>
-        <p className="mt-2 text-slate-400">Back-office opérateur</p>
-
-        <section className="mt-6 rounded-xl bg-slate-800/60 p-4 text-sm">
-          <h2 className="font-medium text-slate-200">État de l'API</h2>
-          {status.kind === "loading" && <p className="mt-2 text-slate-400">Vérification…</p>}
-          {status.kind === "error" && <p className="mt-2 text-red-400">Injoignable : {status.message}</p>}
-          {status.kind === "ok" && (
-            <ul className="mt-2 space-y-1">
-              <li>
-                Statut : <span className={status.data.status === "ok" ? "text-emerald-400" : "text-amber-400"}>{status.data.status}</span>
-              </li>
-              <li>Version : {status.data.version}</li>
-              {Object.entries(status.data.checks).map(([name, value]) => (
-                <li key={name}>
-                  {name} : <span className={value === "ok" ? "text-emerald-400" : "text-red-400"}>{value}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="passages" element={<PassagesPage />} />
+          <Route path="passages/:id" element={<PassageDetailPage />} />
+          <Route path="mismatches" element={<MismatchesPage />} />
+          <Route path="residents" element={<ResidentsPage />} />
+          <Route path="residents/:id" element={<ResidentDetailPage />} />
+          <Route path="vehicles" element={<VehiclesPage />} />
+          <Route path="sites" element={<SitesPage />} />
+          <Route path="sites/:id" element={<SiteDetailPage />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="users" element={<UsersPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
+    </Routes>
   );
 }

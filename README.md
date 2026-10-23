@@ -33,6 +33,13 @@ Avant le premier `make up`, remplacer dans `.env` les valeurs `change-me` (mots 
 
 Les images de `backend/app/seed/demo_images/` sont des photos libres dont la plaque a été remplacée par une plaque fictive (voir `ATTRIBUTIONS.md` dans ce dossier).
 
+## Parcours de démonstration
+
+1. `make backend-seed` : charge le locataire fictif « Parkings Horizon » (2 sites, 20 résidents, 24 véhicules) et affiche **une seule fois** la clé API de chaque site. Copier celle du premier site dans `.env` (`EDGE_API_KEY=`).
+2. Se connecter sur http://localhost:5173 avec `admin@parkings-horizon.example` (mot de passe : `SEED_ADMIN_PASSWORD` du `.env` ; comptes `manager@` et `agent@` sur le même modèle).
+3. `make edge-sim` : rejoue les 4 images de démo comme le ferait une caméra. Résultat attendu : un passage autorisé, un refus pour accès désactivé, un passage autorisé avec écart de marque (à valider dans « Écarts de marque »), un refus pour plaque inconnue.
+4. Les passages apparaissent en direct dans « Passages » ; la validation d'un écart met à jour la marque déclarée du véhicule et copie l'image vers le jeu d'entraînement.
+
 `make help` liste toutes les commandes. Tout passe par `docker compose exec` : rien ne s'exécute hors conteneur.
 
 ## Rechargement à chaud sous WSL2
