@@ -45,7 +45,9 @@ class Settings(BaseSettings):
 
     # Service ML
     ml_url: str = "http://ml:8002"
-    ml_timeout_ms: int = 800
+    # Une inférence à froid (service inactif depuis un moment) prend jusqu'à ~750 ms côté ML :
+    # 800 ms la faisait échouer en ml_unavailable. Budget p95 produit : 1 000 ms.
+    ml_timeout_ms: int = 1500
 
     # Ingestion
     ingest_rate_per_minute: int = 60

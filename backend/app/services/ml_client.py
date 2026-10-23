@@ -41,7 +41,8 @@ class MlClient:
                 },
             )
         except httpx.HTTPError as exc:
-            raise MlUnavailableError(str(exc)) from exc
+            # Un délai dépassé (ReadTimeout) n'a pas de message : on journalise au moins le type.
+            raise MlUnavailableError(str(exc) or type(exc).__name__) from exc
         if response.status_code >= 500:
             raise MlUnavailableError(f"HTTP {response.status_code}")
         if response.status_code >= 400:
