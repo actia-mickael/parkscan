@@ -158,14 +158,22 @@ async def health(request: Request) -> HealthResponse:
 @app.get("/models", response_model=ModelsResponse)
 async def models(request: Request) -> ModelsResponse:
     pipeline = _pipeline(request)
-    origin = (
-        request.app.state.registry.sources.origin if request.app.state.registry.sources else "?"
-    )
+    sources = request.app.state.registry.sources
+    origin = sources.origin if sources else "?"
+    # Détecteur de véhicule et OCR sont génériques, téléchargés au build de l'image.
     infos = {
-        name: ModelInfo(source=origin, version=version)
+        name: ModelInfo(
+            source=origin if name in ("plate_detector", "brand_classifier") else "image",
+            version=version,
+        )
         for name, version in pipeline.versions.items()
     }
     infos["brand_classifier"].details = dict(pipeline.brand.details)
+    if sources:
+        # Provenance MLflow : alias, numéro de version, run d'origine
+        for name, extra in sources.details.items():
+            if name in infos:
+                infos[name].details.update(extra)
     return ModelsResponse(device=settings.device, models=infos, labels=pipeline.labels)
 
 

@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     # Images de démonstration (montées depuis backend/app/seed/demo_images)
     demo_images_dir: Path = Path("/opt/demo_images")
 
+    # Registre de modèles MLflow. auto : MLflow si configuré et joignable, sinon poids locaux ;
+    # mlflow : MLflow obligatoire ; local : poids locaux seulement.
+    model_source: Literal["auto", "local", "mlflow"] = "auto"
+    mlflow_tracking_uri: str = ""
+    mlflow_alias: str = "production"
+    mlflow_brand_model: str = "brand_classifier"
+    mlflow_plate_model: str = "plate_detector"
+    mlflow_cache_dir: Path = Path("/app/weights/mlflow")  # artefacts téléchargés, par version
+    mlflow_timeout_s: int = 10
+
     device: str = "cpu"
     torch_threads: int | None = None
     max_concurrency: int = 2

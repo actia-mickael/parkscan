@@ -50,11 +50,24 @@ def ml_result(
     )
 
 
+FAKE_MODELS = {
+    "device": "cpu",
+    "models": {
+        "plate_detector": {"source": "fake", "version": "fake", "details": {}},
+        "ocr": {"source": "fake", "version": "fake", "details": {}},
+        "vehicle_detector": {"source": "fake", "version": "fake", "details": {}},
+        "brand_classifier": {"source": "fake", "version": "fake", "details": {"arch": "fake"}},
+    },
+    "labels": ["peugeot", "renault"],
+}
+
+
 class FakeMlClient:
     def __init__(self) -> None:
         self.result: MlInferResult = ml_result()
         self.unavailable = False
         self.calls = 0
+        self.reloads = 0
 
     async def infer(self, image: bytes, **_: object) -> MlInferResult:
         self.calls += 1
@@ -65,8 +78,16 @@ class FakeMlClient:
     async def health(self) -> bool:
         return not self.unavailable
 
+    async def models(self) -> dict:
+        if self.unavailable:
+            raise MlUnavailableError("simulé")
+        return FAKE_MODELS
+
     async def reload(self) -> dict:
-        return {}
+        if self.unavailable:
+            raise MlUnavailableError("simulé")
+        self.reloads += 1
+        return FAKE_MODELS
 
     async def aclose(self) -> None:
         return None

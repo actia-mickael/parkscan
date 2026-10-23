@@ -269,3 +269,15 @@ export interface DashboardSummary {
   top_brands: BrandCount[];
   hourly: HourlyPoint[];
 }
+
+export interface ServedModel {
+  source: string; // "local" | "mlflow" | …
+  version: string;
+  details: Record<string, string | number | null>;
+}
+
+export interface ServedModels {
+  device: string;
+  models: Record<string, ServedModel>;
+  labels: string[];
+}

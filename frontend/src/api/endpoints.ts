@@ -14,6 +14,7 @@ import type {
   PresignedImage,
   ResidentCreate,
   ResidentRead,
+  ServedModels,
   SiteCreate,
   SiteRead,
   SiteUpdate,
@@ -91,4 +92,9 @@ export const mismatchesApi = {
     api.post(`/mismatches/${id}/validate`, body),
   reject: (id: string, comment?: string): Promise<AxiosResponse<MismatchRead>> =>
     api.post(`/mismatches/${id}/reject`, { comment: comment ?? null }),
+};
+
+export const modelsApi = {
+  get: (): Promise<AxiosResponse<ServedModels>> => api.get("/models"),
+  reload: (): Promise<AxiosResponse<ServedModels>> => api.post("/models/reload"),
 };

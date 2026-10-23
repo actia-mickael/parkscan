@@ -6,7 +6,8 @@ FRONTEND := $(COMPOSE) exec frontend
 .PHONY: help init up down restart logs ps build clean health \
         backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
         frontend-shell frontend-typecheck db-shell \
-        ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim
+        ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim \
+        mlops-up mlops-down mlops-logs mlops-seed-models
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -15,7 +16,7 @@ init: ## Prépare .env (si absent) et construit les images
 	@test -f .env || (cp .env.example .env && echo ".env créé depuis .env.example : adapte les mots de passe")
 	$(COMPOSE) build
 
-up: ## Démarre la stack cœur (db, backend, frontend, minio)
+up: ## Démarre la stack cœur (db, backend, ml, frontend, garage)
 	$(COMPOSE) up -d
 
 down: ## Arrête la stack
@@ -40,6 +41,9 @@ health: ## Vérifie l'état des services
 	@$(COMPOSE) ps --format 'table {{.Service}}\t{{.Status}}'
 	@echo "--- backend /health"
 	@curl -fsS http://localhost:$${BACKEND_PORT:-8001}/api/v1/health || echo "backend injoignable"
+	@echo
+	@echo "--- mlflow /health (profil mlops)"
+	@curl -fsS http://localhost:$${MLFLOW_PORT:-5000}/health || echo "mlflow arrêté (make mlops-up)"
 	@echo
 
 backend-shell: ## Ouvre un shell dans le backend
@@ -108,3 +112,19 @@ ml-fetch-weights: ## Télécharge les poids produit (détecteur de plaque, class
 	@for f in plate_detector.pt brand_classifier.pth; do \
 	  test -f ml/weights/$$f && echo "ml/weights/$$f présent" || curl -fL -o ml/weights/$$f "$(WEIGHTS_BASE_URL)/$$f"; \
 	done
+
+# --- Profil mlops : registre de modèles MLflow --------------------------------------------------
+
+mlops-up: ## Démarre le profil mlops (MLflow + sa base) en plus de la stack cœur
+	$(COMPOSE) --profile mlops build mlflow
+	$(COMPOSE) --profile mlops up -d
+
+mlops-down: ## Arrête les services du profil mlops (la stack cœur reste)
+	$(COMPOSE) --profile mlops stop mlflow mlflow-db
+
+mlops-logs: ## Journaux de MLflow
+	$(COMPOSE) --profile mlops logs -f --tail=100 mlflow
+
+mlops-seed-models: ## Enregistre les poids locaux dans MLflow (alias production) puis recharge le service ML
+	$(COMPOSE) exec ml python scripts/seed_mlflow.py
+	$(MAKE) ml-reload

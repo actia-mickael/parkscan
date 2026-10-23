@@ -16,6 +16,7 @@ dependencies = [
     "torchvision>=0.20",
     "ultralytics>=8.3",
     "fast-plate-ocr[onnx]>=1.1",
+    "mlflow-skinny>=3.17",
 ]
 
 [project.optional-dependencies]

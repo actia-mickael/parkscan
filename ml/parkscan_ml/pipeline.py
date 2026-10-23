@@ -152,6 +152,8 @@ class ALPRPipeline:
         ocr_model_name: str,
         device: str = "cpu",
         torch_threads: int | None = None,
+        plate_label: str | None = None,
+        brand_label: str | None = None,
     ) -> None:
         if torch_threads:
             torch.set_num_threads(torch_threads)
@@ -163,11 +165,13 @@ class ALPRPipeline:
         self.ocr = LicensePlateRecognizer(ocr_model_name)
         self.brand = BrandClassifier(brand_classifier_path, device)
 
+        plate_tag = plate_label or f"local:{plate_detector_path.name}"
+        brand_tag = brand_label or f"local:{brand_classifier_path.name}"
         self.versions = {
-            "plate_detector": f"local:{plate_detector_path.name}:{file_digest(plate_detector_path)}",
+            "plate_detector": f"{plate_tag}:{file_digest(plate_detector_path)}",
             "vehicle_detector": vehicle_detector_path.stem,
             "ocr": ocr_model_name,
-            "brand_classifier": f"local:{brand_classifier_path.name}:{file_digest(brand_classifier_path)}",
+            "brand_classifier": f"{brand_tag}:{file_digest(brand_classifier_path)}",
         }
         log.info(
             "pipeline_loaded",

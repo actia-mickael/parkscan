@@ -6,6 +6,7 @@ import CamerasPage from "@/pages/CamerasPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import MismatchesPage from "@/pages/MismatchesPage";
+import ModelsPage from "@/pages/ModelsPage";
 import PassageDetailPage from "@/pages/PassageDetailPage";
 import PassagesPage from "@/pages/PassagesPage";
 import ResidentDetailPage from "@/pages/ResidentDetailPage";
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="vehicles" element={<VehiclesPage />} />
           <Route path="sites" element={<SitesPage />} />
           <Route path="sites/:id" element={<SiteDetailPage />} />
+          <Route path="models" element={<ModelsPage />} />
           <Route element={<RequireAdmin />}>
             <Route path="users" element={<UsersPage />} />
           </Route>

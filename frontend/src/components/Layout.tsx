@@ -14,6 +14,7 @@ const NAV = [
   { to: "/residents", label: "Résidents" },
   { to: "/vehicles", label: "Véhicules" },
   { to: "/sites", label: "Sites" },
+  { to: "/models", label: "Modèles" },
   { to: "/users", label: "Utilisateurs", adminOnly: true },
 ];
 

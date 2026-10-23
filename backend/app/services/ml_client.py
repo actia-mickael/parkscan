@@ -56,6 +56,16 @@ class MlClient:
             return False
         return response.status_code == 200
 
+    async def models(self) -> dict:
+        try:
+            response = await self._http.get("/models", timeout=10)
+        except httpx.HTTPError as exc:
+            raise MlUnavailableError(str(exc) or type(exc).__name__) from exc
+        if response.status_code >= 500:
+            raise MlUnavailableError(f"HTTP {response.status_code}")
+        response.raise_for_status()
+        return response.json()
+
     async def reload(self) -> dict:
         response = await self._http.post(
             "/models/reload", headers={"X-Internal-Token": self._internal_token}, timeout=120

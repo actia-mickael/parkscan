@@ -14,6 +14,7 @@ from app.api import (
     health,
     ingest,
     mismatches,
+    models,
     passages,
     residents,
     sites,
@@ -74,6 +75,7 @@ for router in (
     ingest.router,
     passages.router,
     mismatches.router,
+    models.router,
     dashboard.router,
 ):
     app.include_router(router, prefix=API_PREFIX)

@@ -30,6 +30,7 @@ Avant le premier `make up`, remplacer dans `.env` les valeurs `change-me` (mots 
 - Back-office : http://localhost:5173
 - Service ML : http://localhost:8002/docs (`make ml-bench` mesure la latence par étape)
 - S3 local (Garage) : http://localhost:3900
+- Registre de modèles (MLflow, profil `mlops`) : http://localhost:5000
 
 Les images de `backend/app/seed/demo_images/` sont des photos libres dont la plaque a été remplacée par une plaque fictive (voir `ATTRIBUTIONS.md` dans ce dossier).
 
@@ -39,6 +40,7 @@ Les images de `backend/app/seed/demo_images/` sont des photos libres dont la pla
 2. Se connecter sur http://localhost:5173 avec `admin@parkings-horizon.example` (mot de passe : `SEED_ADMIN_PASSWORD` du `.env` ; comptes `manager@` et `agent@` sur le même modèle).
 3. `make edge-sim` : rejoue les 4 images de démo comme le ferait une caméra. Résultat attendu : un passage autorisé, un refus pour accès désactivé, un passage autorisé avec écart de marque (à valider dans « Écarts de marque »), un refus pour plaque inconnue.
 4. Les captures apparaissent en direct dans « Caméras » (image, zones véhicule et plaque détectées, plaque lue avec sa confiance) et dans « Passages » ; la validation d'un écart met à jour la marque déclarée du véhicule et copie l'image vers le jeu d'entraînement.
+5. Registre de modèles : `make mlops-up` (MLflow et sa base) puis `make mlops-seed-models` (enregistre les poids de `ml/weights` avec l'alias `production` et recharge le service ML). La page « Modèles » du back-office passe de « Poids locaux » à « Registre MLflow » avec le numéro de version ; sans le profil `mlops`, le service ML se replie sur les poids locaux (ADR-007).
 
 `make help` liste toutes les commandes. Tout passe par `docker compose exec` : rien ne s'exécute hors conteneur.
 
