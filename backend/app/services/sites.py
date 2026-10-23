@@ -1,10 +1,11 @@
-"""Accès aux sites dans le périmètre de l'utilisateur courant."""
+"""Accès aux sites et filtrage par périmètre de l'utilisateur courant."""
 
 import uuid
 from collections.abc import Iterable
+from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser
@@ -39,3 +40,14 @@ async def load_tenant_sites(
     if len(sites) != len(wanted):
         raise _not_found()
     return sites
+
+
+def scope_filter(stmt: Select[Any], model: Any, current: CurrentUser) -> Select[Any]:
+    """Restreint une requête au locataire et, pour les rôles limités, aux sites autorisés.
+
+    Le modèle doit porter `tenant_id` et `site_id`.
+    """
+    stmt = stmt.where(model.tenant_id == current.tenant_id)
+    if current.allowed_site_ids is not None:
+        stmt = stmt.where(model.site_id.in_(current.allowed_site_ids))
+    return stmt

@@ -1,17 +1,21 @@
-"""Dépendances FastAPI partagées : session, utilisateur courant, rôles, jeton interne."""
+"""Dépendances FastAPI partagées : session, utilisateur courant, rôles, clé API, jeton interne."""
 
 import secrets
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.security import TokenError, decode_token
+from app.core.security import TokenError, decode_token, hash_api_key
+from app.db.models.api_key import ApiKey
+from app.db.models.site import Site
 from app.db.models.user import User, UserRole
 from app.db.session import get_session
 
@@ -79,6 +83,46 @@ AdminDep = Annotated[CurrentUser, Depends(require_roles(UserRole.operator_admin)
 ManagerDep = Annotated[
     CurrentUser, Depends(require_roles(UserRole.operator_admin, UserRole.site_manager))
 ]
+
+
+# --- Clé API (agent de bord) ----------------------------------------------------------------
+
+LAST_USED_REFRESH = timedelta(seconds=60)
+
+
+@dataclass(slots=True)
+class ApiKeyContext:
+    api_key: ApiKey
+    site: Site
+
+    @property
+    def tenant_id(self) -> uuid.UUID:
+        return self.site.tenant_id
+
+
+async def get_api_key_context(
+    session: SessionDep,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> ApiKeyContext:
+    if not x_api_key:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Clé API requise")
+    api_key = await session.scalar(select(ApiKey).where(ApiKey.key_hash == hash_api_key(x_api_key)))
+    if api_key is None or not api_key.is_valid:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Clé API invalide, expirée ou révoquée")
+    site = await session.get(Site, api_key.site_id)
+    if site is None or not site.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Site inactif")
+    now = datetime.now(UTC)
+    # Une écriture par minute au plus : le chemin d'ingestion reste léger.
+    if api_key.last_used_at is None or now - api_key.last_used_at > LAST_USED_REFRESH:
+        api_key.last_used_at = now
+    return ApiKeyContext(api_key=api_key, site=site)
+
+
+ApiKeyDep = Annotated[ApiKeyContext, Depends(get_api_key_context)]
+
+
+# --- Jeton interne (Airflow → backend) -------------------------------------------------------
 
 
 async def require_internal_token(

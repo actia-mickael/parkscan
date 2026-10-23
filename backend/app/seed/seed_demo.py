@@ -1,5 +1,6 @@
 """Jeu de démonstration fictif : référentiel de marques, un locataire, deux sites, trois utilisateurs,
-une clé API par site. Idempotent : relançable sans doublon. Usage : python -m app.seed.seed_demo"""
+une clé API par site, vingt résidents et leurs véhicules. Idempotent : relançable sans doublon.
+Usage : python -m app.seed.seed_demo"""
 
 import asyncio
 import json
@@ -9,8 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.plates import normalize_plate
 from app.core.security import generate_api_key, hash_password
-from app.db.models import ApiKey, Brand, Site, Tenant, User, UserRole
+from app.db.models import ApiKey, Brand, Resident, Site, Tenant, User, UserRole, Vehicle
 from app.db.session import SessionLocal
 
 HERE = Path(__file__).parent
@@ -33,6 +35,7 @@ async def seed_brands(session: AsyncSession) -> int:
         else:
             brand.display_name = entry["display_name"]
             brand.aliases = entry.get("aliases", [])
+    await session.flush()
     return len(entries)
 
 
@@ -99,6 +102,47 @@ async def seed_api_keys(session: AsyncSession, sites: dict[str, Site]) -> list[t
     return created
 
 
+async def seed_residents(
+    session: AsyncSession, tenant: Tenant, sites: dict[str, Site], entries: list[dict]
+) -> tuple[int, int]:
+    n_vehicles = 0
+    for entry in entries:
+        site = sites[entry["site"]]
+        resident = await session.scalar(
+            select(Resident).where(
+                Resident.tenant_id == tenant.id, Resident.email == entry["email"]
+            )
+        )
+        if resident is None:
+            fields = {k: v for k, v in entry.items() if k not in ("site", "vehicles")}
+            resident = Resident(tenant_id=tenant.id, site_id=site.id, **fields)
+            session.add(resident)
+            await session.flush()
+        for spec in entry["vehicles"]:
+            plate_norm = normalize_plate(spec["plate"])
+            vehicle = await session.scalar(
+                select(Vehicle).where(
+                    Vehicle.tenant_id == tenant.id, Vehicle.plate_norm == plate_norm
+                )
+            )
+            if vehicle is None:
+                session.add(
+                    Vehicle(
+                        tenant_id=tenant.id,
+                        site_id=site.id,
+                        resident_id=resident.id,
+                        plate_raw=spec["plate"],
+                        plate_norm=plate_norm,
+                        declared_brand=spec.get("declared_brand"),
+                        declared_model=spec.get("declared_model"),
+                        color=spec.get("color"),
+                        access_enabled=spec.get("access_enabled", True),
+                    )
+                )
+            n_vehicles += 1
+    return len(entries), n_vehicles
+
+
 async def main() -> None:
     data = json.loads((HERE / "demo_data.json").read_text(encoding="utf-8"))
     async with SessionLocal() as session:
@@ -107,10 +151,12 @@ async def main() -> None:
         sites = await seed_sites(session, tenant, data["sites"])
         await seed_users(session, tenant, sites, data["users"])
         keys = await seed_api_keys(session, sites)
+        n_res, n_veh = await seed_residents(session, tenant, sites, data["residents"])
         await session.commit()
 
     print(f"[seed] marques : {n_brands} | locataire : {tenant.name} | sites : {', '.join(sites)}")
     print("[seed] utilisateurs : " + ", ".join(u["email"] for u in data["users"]))
+    print(f"[seed] résidents : {n_res} | véhicules : {n_veh}")
     if keys:
         print("[seed] clés API créées (secret affiché une seule fois) :")
         for slug, secret in keys:

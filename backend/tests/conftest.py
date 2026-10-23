@@ -15,8 +15,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
 from app.core.config import get_settings
-from app.core.security import create_access_token, hash_password
-from app.db.models import Site, Tenant, User, UserRole
+from app.core.plates import normalize_plate
+from app.core.security import create_access_token, generate_api_key, hash_password
+from app.db.models import ApiKey, Resident, Site, Tenant, User, UserRole, Vehicle
 from app.db.session import get_session
 from app.main import app
 
@@ -99,6 +100,46 @@ async def make_user(
     await session.commit()
     await session.refresh(user)
     return user
+
+
+async def make_api_key(session: AsyncSession, site: Site) -> tuple[ApiKey, str]:
+    secret, prefix, digest = generate_api_key()
+    api_key = ApiKey(
+        tenant_id=site.tenant_id, site_id=site.id, name="test", key_prefix=prefix, key_hash=digest
+    )
+    session.add(api_key)
+    await session.commit()
+    await session.refresh(api_key)
+    return api_key, secret
+
+
+async def make_resident(
+    session: AsyncSession, site: Site, last_name: str = "Test", first_name: str = "Resident"
+) -> Resident:
+    resident = Resident(
+        tenant_id=site.tenant_id, site_id=site.id, last_name=last_name, first_name=first_name
+    )
+    session.add(resident)
+    await session.commit()
+    await session.refresh(resident)
+    return resident
+
+
+async def make_vehicle(
+    session: AsyncSession, resident: Resident, plate: str, access_enabled: bool = True
+) -> Vehicle:
+    vehicle = Vehicle(
+        tenant_id=resident.tenant_id,
+        site_id=resident.site_id,
+        resident_id=resident.id,
+        plate_raw=plate,
+        plate_norm=normalize_plate(plate),
+        access_enabled=access_enabled,
+    )
+    session.add(vehicle)
+    await session.commit()
+    await session.refresh(vehicle)
+    return vehicle
 
 
 def auth_headers(user: User) -> dict[str, str]:

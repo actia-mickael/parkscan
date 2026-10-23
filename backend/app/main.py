@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import api_keys, auth, health, sites, tenants, users
+from app.api import api_keys, auth, health, ingest, residents, sites, tenants, users, vehicles
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.session import engine
@@ -49,5 +49,8 @@ for router in (
     users.router,
     sites.router,
     api_keys.router,
+    residents.router,
+    vehicles.router,
+    ingest.router,
 ):
     app.include_router(router, prefix=API_PREFIX)
