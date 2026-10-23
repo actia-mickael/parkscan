@@ -1,0 +1,36 @@
+# Secrets et environnement
+.env
+.env.*.local
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Poids de modèles et caches ML (jamais dans git)
+ml/weights/*
+!ml/weights/.gitkeep
+*.pt
+*.pth
+*.onnx
+mlruns/
+
+# Données locales
+data/
+edge/spool/
+
+# Divers
+*.log
+.DS_Store
+.idea/
+.vscode/

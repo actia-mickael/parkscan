@@ -1,0 +1,107 @@
+name: parkscan
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-parkscan}
+      POSTGRES_USER: ${POSTGRES_USER:-parkscan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - parkscan_net
+
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    ports:
+      - "${BACKEND_PORT:-8001}:8001"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/api/v1/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - parkscan_net
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      VITE_API_TARGET: ${VITE_API_TARGET:-http://backend:8001}
+      VITE_USE_POLLING: ${VITE_USE_POLLING:-true}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - parkscan_net
+
+  # Stockage objets compatible S3 (dev / démo). En production : S3 managé.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    environment:
+      GARAGE_CONFIG_FILE: /etc/garage/garage.toml
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?définir GARAGE_RPC_SECRET dans .env (openssl rand -hex 32)}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?définir GARAGE_ADMIN_TOKEN dans .env (openssl rand -base64 32)}
+    ports:
+      - "${S3_HOST_PORT:-3900}:3900"
+    volumes:
+      # Montage du dossier (pas du fichier seul) : un fichier réécrit casse le montage sous Docker Desktop.
+      - ./garage:/etc/garage:ro
+      - garage_data:/var/lib/garage
+    networks:
+      - parkscan_net
+
+  # Initialisation idempotente : disposition du nœud, buckets, clé d'accès (API d'administration).
+  garage-init:
+    image: python:3.12-slim
+    command: ["python", "-I", "/opt/garage/init.py"]
+    environment:
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+      GARAGE_CAPACITY_BYTES: ${GARAGE_CAPACITY_BYTES:-20000000000}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?définir S3_ACCESS_KEY dans .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?définir S3_SECRET_KEY dans .env}
+      BUCKETS: "${S3_BUCKET_CAPTURES:-parkscan-captures} ${S3_BUCKET_DATASET:-parkscan-dataset} ${S3_BUCKET_MLFLOW:-mlflow}"
+    volumes:
+      - ./garage:/opt/garage:ro
+    depends_on:
+      garage:
+        condition: service_started
+    networks:
+      - parkscan_net
+
+volumes:
+  db_data:
+  garage_data:
+
+networks:
+  parkscan_net:
+    name: parkscan_net
