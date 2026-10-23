@@ -1,10 +1,11 @@
-"""État de santé : sonde de vie (sans dépendance) et sonde complète (base de données)."""
+"""État de santé : sonde de vie (sans dépendance) et sonde complète (base, stockage, service ML)."""
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import text
 
 from app import __version__
-from app.api.deps import SessionDep
+from app.api.deps import SessionDep, get_ml_client, get_storage
 from app.core.logging import get_logger
 from app.schemas.health import HealthResponse, LiveResponse
 
@@ -18,7 +19,7 @@ async def live() -> LiveResponse:
 
 
 @router.get("", response_model=HealthResponse)
-async def health(session: SessionDep, response: Response) -> HealthResponse:
+async def health(request: Request, session: SessionDep, response: Response) -> HealthResponse:
     checks: dict[str, str] = {}
     try:
         await session.execute(text("SELECT 1"))
@@ -26,6 +27,9 @@ async def health(session: SessionDep, response: Response) -> HealthResponse:
     except Exception as exc:
         log.warning("health_db_failed", error=str(exc))
         checks["db"] = "error"
+
+    checks["storage"] = "ok" if await run_in_threadpool(get_storage(request).check) else "error"
+    checks["ml"] = "ok" if await get_ml_client(request).health() else "error"
 
     overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
     if overall != "ok":

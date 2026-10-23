@@ -16,10 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_e
 
 from app.core.config import get_settings
 from app.core.plates import normalize_plate
+from app.core.ratelimit import TokenBucketLimiter
 from app.core.security import create_access_token, generate_api_key, hash_password
 from app.db.models import ApiKey, Resident, Site, Tenant, User, UserRole, Vehicle
 from app.db.session import get_session
 from app.main import app
+from tests.fakes import FakeMlClient, MemoryStorage
 
 TEST_PASSWORD = "Secret-123"
 
@@ -50,18 +52,34 @@ async def db_session(db_conn: AsyncConnection) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.fixture
-async def client(db_conn: AsyncConnection) -> AsyncIterator[AsyncClient]:
+def fake_ml() -> FakeMlClient:
+    return FakeMlClient()
+
+
+@pytest.fixture
+def storage() -> MemoryStorage:
+    return MemoryStorage()
+
+
+@pytest.fixture
+async def client(
+    db_conn: AsyncConnection, fake_ml: FakeMlClient, storage: MemoryStorage
+) -> AsyncIterator[AsyncClient]:
     async def _override_session() -> AsyncIterator[AsyncSession]:
         async with _session_on(db_conn) as session:
             yield session
 
     app.dependency_overrides[get_session] = _override_session
     try:
-        async with (
-            LifespanManager(app),
-            AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http,
-        ):
-            yield http
+        async with LifespanManager(app):
+            # Les services réels créés au démarrage sont remplacés par des doublures.
+            app.state.ml_client = fake_ml
+            app.state.storage = storage
+            app.state.rate_limiter = TokenBucketLimiter(rate_per_minute=600)
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as http:
+                yield http
     finally:
         app.dependency_overrides.clear()
 

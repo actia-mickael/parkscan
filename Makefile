@@ -6,7 +6,7 @@ FRONTEND := $(COMPOSE) exec frontend
 .PHONY: help init up down restart logs ps build clean health \
         backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
         frontend-shell frontend-typecheck db-shell \
-        ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights
+        ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -99,6 +99,9 @@ ml-reload: ## Recharge les modèles du service ML sans redémarrage
 
 ml-bench: ## Banc de latence : 20 appels /infer sur les images de démo, p50 et p95 par étape
 	$(ML) python scripts/bench.py --n 20 /opt/demo_images
+
+edge-sim: ## Rejoue les images de démo vers l'API (clé API : KEY=psk_... ou EDGE_API_KEY dans .env)
+	EDGE_API_KEY=$(or $(KEY),$(shell grep '^EDGE_API_KEY=' .env | cut -d= -f2)) $(COMPOSE) --profile sim run --rm --build edge-sim $(ARGS)
 
 ml-fetch-weights: ## Télécharge les poids produit (détecteur de plaque, classifieur de marques) dans ml/weights
 	@mkdir -p ml/weights

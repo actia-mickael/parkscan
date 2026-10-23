@@ -5,9 +5,9 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,11 @@ from app.db.models.api_key import ApiKey
 from app.db.models.site import Site
 from app.db.models.user import User, UserRole
 from app.db.session import get_session
+
+if TYPE_CHECKING:
+    from app.core.ratelimit import TokenBucketLimiter
+    from app.services.ml_client import MlClient
+    from app.services.storage import Storage
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -120,6 +125,21 @@ async def get_api_key_context(
 
 
 ApiKeyDep = Annotated[ApiKeyContext, Depends(get_api_key_context)]
+
+
+# --- Services partagés (créés au démarrage, remplaçables en test) ------------------------------
+
+
+def get_ml_client(request: Request) -> "MlClient":
+    return request.app.state.ml_client
+
+
+def get_storage(request: Request) -> "Storage":
+    return request.app.state.storage
+
+
+def get_rate_limiter(request: Request) -> "TokenBucketLimiter":
+    return request.app.state.rate_limiter
 
 
 # --- Jeton interne (Airflow → backend) -------------------------------------------------------

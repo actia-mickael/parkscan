@@ -33,6 +33,24 @@ class Settings(BaseSettings):
     # Jeton partagé pour les appels internes (Airflow → backend, backend → ML)
     internal_token: str = "change-me-internal-token"
 
+    # Stockage objets compatible S3 (Garage en dev, S3 managé en prod)
+    s3_endpoint_url: str = "http://garage:3900"
+    s3_public_endpoint_url: str = "http://localhost:3900"  # URLs présignées vues du navigateur
+    s3_region: str = "garage"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket_captures: str = "parkscan-captures"
+    s3_bucket_dataset: str = "parkscan-dataset"
+    presign_expires_seconds: int = 300
+
+    # Service ML
+    ml_url: str = "http://ml:8002"
+    ml_timeout_ms: int = 800
+
+    # Ingestion
+    ingest_rate_per_minute: int = 60
+    max_upload_bytes: int = 20 * 1024 * 1024
+
     # Jeu de démo
     seed_admin_password: str = "admin-change-me"
     seed_manager_password: str = "manager-change-me"

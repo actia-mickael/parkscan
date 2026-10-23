@@ -88,6 +88,21 @@ services:
     networks:
       - parkscan_net
 
+  # Simulateur d'agent de bord : rejoue les images de démo vers l'API (profil sim, usage ponctuel).
+  edge-sim:
+    build:
+      context: ./edge
+      target: dev
+    profiles: ["sim"]
+    environment:
+      EDGE_API_URL: http://backend:8001
+      EDGE_API_KEY: ${EDGE_API_KEY:-}
+    volumes:
+      - ./backend/app/seed/demo_images:/opt/demo_images:ro
+    command: ["--dir", "/opt/demo_images", "--interval", "0.5"]
+    networks:
+      - parkscan_net
+
   # Stockage objets compatible S3 (dev / démo). En production : S3 managé.
   garage:
     image: dxflrs/garage:v2.4.1
