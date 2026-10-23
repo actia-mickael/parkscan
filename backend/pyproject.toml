@@ -13,6 +13,8 @@ dependencies = [
     "alembic>=1.14",
     "psycopg[binary]>=3.2",
     "structlog>=24.4",
+    "pyjwt>=2.9",
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]

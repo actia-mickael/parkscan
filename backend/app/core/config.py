@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +24,32 @@ class Settings(BaseSettings):
 
     # CSV stocké en chaîne (compatibilité variables d'environnement), exposé en liste.
     cors_origins: str = "http://localhost:5173"
+
+    # Authentification
+    jwt_secret: str = "change-me-jwt-secret"
+    jwt_algorithm: str = "HS256"
+    jwt_access_minutes: int = 15
+    jwt_refresh_days: int = 30
+    # Jeton partagé pour les appels internes (Airflow → backend, backend → ML)
+    internal_token: str = "change-me-internal-token"
+
+    # Jeu de démo
+    seed_admin_password: str = "admin-change-me"
+    seed_manager_password: str = "manager-change-me"
+    seed_agent_password: str = "agent-change-me"
+
+    @model_validator(mode="after")
+    def _refuse_default_secrets_in_prod(self) -> "Settings":
+        if self.app_env != "prod":
+            return self
+        weak = [
+            name
+            for name in ("postgres_password", "jwt_secret", "internal_token")
+            if getattr(self, name).startswith("change-me")
+        ]
+        if weak:
+            raise ValueError(f"Secrets par défaut interdits en production : {', '.join(weak)}")
+        return self
 
     @property
     def _dsn_tail(self) -> str:

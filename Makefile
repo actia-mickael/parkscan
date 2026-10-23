@@ -4,7 +4,7 @@ BACKEND := $(COMPOSE) exec backend
 FRONTEND := $(COMPOSE) exec frontend
 
 .PHONY: help init up down restart logs ps build clean health \
-        backend-shell backend-lint backend-format backend-test backend-migrate backend-revision \
+        backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
         frontend-shell frontend-typecheck db-shell
 
 help: ## Affiche cette aide
@@ -60,6 +60,9 @@ backend-migrate: ## Applique les migrations
 
 backend-revision: ## Génère une migration (usage : make backend-revision m="message")
 	$(BACKEND) alembic revision --autogenerate -m "$(m)"
+
+backend-seed: ## Charge le jeu de démonstration fictif (idempotent)
+	$(BACKEND) python -m app.seed.seed_demo
 
 frontend-shell: ## Ouvre un shell dans le frontend
 	$(FRONTEND) sh

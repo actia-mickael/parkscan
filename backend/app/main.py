@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import health
+from app.api import api_keys, auth, health, sites, tenants, users
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.session import engine
@@ -42,4 +42,12 @@ app.add_middleware(
 )
 
 API_PREFIX = "/api/v1"
-app.include_router(health.router, prefix=API_PREFIX)
+for router in (
+    health.router,
+    auth.router,
+    tenants.router,
+    users.router,
+    sites.router,
+    api_keys.router,
+):
+    app.include_router(router, prefix=API_PREFIX)

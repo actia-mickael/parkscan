@@ -14,6 +14,7 @@ class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    # Seuils par défaut (détection, OCR, marque), taille minimale du dataset, rétention en jours.
     settings: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )

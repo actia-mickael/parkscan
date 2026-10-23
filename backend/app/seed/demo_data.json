@@ -1,0 +1,50 @@
+{
+  "tenant": {
+    "name": "Parkings Horizon",
+    "slug": "parkings-horizon",
+    "settings": {
+      "detection_threshold": 0.5,
+      "ocr_threshold": 0.6,
+      "brand_threshold": 0.7,
+      "min_dataset_size": 500,
+      "retention_days": 30
+    }
+  },
+  "sites": [
+    {
+      "name": "Résidence des Tilleuls",
+      "slug": "residence-des-tilleuls",
+      "address": "12 allée des Tilleuls, 44000 Nantes",
+      "timezone": "Europe/Paris"
+    },
+    {
+      "name": "Parking Gare Nord",
+      "slug": "parking-gare-nord",
+      "address": "Place de la Gare, 44000 Nantes",
+      "timezone": "Europe/Paris"
+    }
+  ],
+  "users": [
+    {
+      "email": "admin@parkings-horizon.example",
+      "full_name": "Alice Admin",
+      "role": "operator_admin",
+      "password_setting": "seed_admin_password",
+      "sites": []
+    },
+    {
+      "email": "manager@parkings-horizon.example",
+      "full_name": "Marc Gestionnaire",
+      "role": "site_manager",
+      "password_setting": "seed_manager_password",
+      "sites": ["residence-des-tilleuls", "parking-gare-nord"]
+    },
+    {
+      "email": "agent@parkings-horizon.example",
+      "full_name": "Agnès Agent",
+      "role": "agent",
+      "password_setting": "seed_agent_password",
+      "sites": ["residence-des-tilleuls"]
+    }
+  ]
+}
