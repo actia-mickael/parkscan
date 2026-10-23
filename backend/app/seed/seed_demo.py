@@ -152,10 +152,29 @@ async def main() -> None:
         await seed_users(session, tenant, sites, data["users"])
         keys = await seed_api_keys(session, sites)
         n_res, n_veh = await seed_residents(session, tenant, sites, data["residents"])
+        # Locataires supplémentaires (isolation multi-locataires visible dans la démo)
+        extra_names: list[str] = []
+        extra_users: list[str] = []
+        for extra in data.get("extra_tenants", []):
+            other = await seed_tenant(session, extra["tenant"])
+            other_sites = await seed_sites(session, other, extra["sites"])
+            await seed_users(session, other, other_sites, extra["users"])
+            keys += await seed_api_keys(session, other_sites)
+            res, veh = await seed_residents(session, other, other_sites, extra["residents"])
+            n_res += res
+            n_veh += veh
+            extra_names.append(other.name)
+            extra_users += [u["email"] for u in extra["users"]]
         await session.commit()
 
     print(f"[seed] marques : {n_brands} | locataire : {tenant.name} | sites : {', '.join(sites)}")
-    print("[seed] utilisateurs : " + ", ".join(u["email"] for u in data["users"]))
+    if extra_names:
+        print(f"[seed] autres locataires : {', '.join(extra_names)}")
+    print(
+        "[seed] utilisateurs : "
+        + ", ".join(u["email"] for u in data["users"])
+        + (", " + ", ".join(extra_users) if extra_users else "")
+    )
     print(f"[seed] résidents : {n_res} | véhicules : {n_veh}")
     if keys:
         print("[seed] clés API créées (secret affiché une seule fois) :")

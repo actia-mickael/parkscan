@@ -66,6 +66,32 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+  compose:
+    name: Composition Docker (validation de tous les profils)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valider compose.yaml avec les variables d'exemple
+        run: |
+          cp .env.example .env
+          docker compose --profile mlops --profile tools --profile sim config -q
+
+  edge:
+    name: Agent de bord (lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: edge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.16"
+      - run: uv sync --frozen --extra dev
+      - run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
   images:
     name: Images de production
     runs-on: ubuntu-latest

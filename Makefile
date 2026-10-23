@@ -4,7 +4,7 @@ BACKEND := $(COMPOSE) exec backend
 FRONTEND := $(COMPOSE) exec frontend
 
 .PHONY: help init up down restart logs ps build clean health \
-        backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
+        backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed backend-retention \
         frontend-shell frontend-typecheck db-shell \
         ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim \
         mlops-up mlops-down mlops-logs mlops-seed-models mlops-trigger-training airflow-logs airflow-shell
@@ -74,6 +74,9 @@ backend-revision: ## Génère une migration (usage : make backend-revision m="me
 
 backend-seed: ## Charge le jeu de démonstration fictif (idempotent)
 	$(BACKEND) python -m app.seed.seed_demo
+
+backend-retention: ## Purge les images et anonymise les plaques au-delà de la rétention (DRY=1 : simulation)
+	$(BACKEND) python -m app.jobs.retention $(if $(DRY),--dry-run,)
 
 frontend-shell: ## Ouvre un shell dans le frontend
 	$(FRONTEND) sh

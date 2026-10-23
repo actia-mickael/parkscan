@@ -6,7 +6,7 @@ import { passagesApi } from "@/api/endpoints";
 import CaptureFrame from "@/components/CaptureFrame";
 import PassageImage from "@/components/PassageImage";
 import { Button, Card, DecisionBadge, EmptyState, ErrorBanner, PageTitle, StatusBadge, inputClass } from "@/components/ui";
-import { formatDateTime, percent, reasonLabel } from "@/lib/format";
+import { formatDateTime, percent, plateLabel, reasonLabel } from "@/lib/format";
 import { useSiteStore } from "@/stores/siteStore";
 import type { PassageRead } from "@/types/api";
 
@@ -91,7 +91,7 @@ export default function CamerasPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <Link to={`/passages/${latest.id}`} className="font-mono text-4xl font-semibold tracking-wider text-slate-100 hover:text-sky-300">
-                  {latest.plate_text ?? "—"}
+                  {plateLabel(latest.plate_text)}
                 </Link>
                 <DecisionBadge decision={latest.decision} />
                 {latest.status !== "ok" && <StatusBadge status={latest.status} />}
@@ -151,7 +151,7 @@ export default function CamerasPage() {
                   <div className="min-w-0 flex-1 text-xs text-slate-400">
                     <div className="flex items-center gap-2">
                       <Link to={`/passages/${p.id}`} className="truncate font-mono text-lg font-semibold text-slate-100 hover:text-sky-300">
-                        {p.plate_text ?? "—"}
+                        {plateLabel(p.plate_text)}
                       </Link>
                       <DecisionBadge decision={p.decision} />
                       {fresh && <span className="text-sky-300">nouveau</span>}

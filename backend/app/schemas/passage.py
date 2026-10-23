@@ -56,6 +56,8 @@ class PassageRead(BaseModel):
     latency_ms: int | None
     ml_latency_ms: int | None
     model_versions: dict[str, str] | None
+    images_purged_at: datetime | None = None
+    anonymized_at: datetime | None = None
 
 
 class PassageDetail(PassageRead):

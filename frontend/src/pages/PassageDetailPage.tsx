@@ -6,7 +6,7 @@ import { passagesApi } from "@/api/endpoints";
 import CaptureFrame from "@/components/CaptureFrame";
 import PassageImage from "@/components/PassageImage";
 import { Card, DecisionBadge, ErrorBanner, PageTitle, StatusBadge } from "@/components/ui";
-import { formatDateTime, percent, reasonLabel } from "@/lib/format";
+import { formatDateTime, percent, plateLabel, reasonLabel } from "@/lib/format";
 import type { PassageDetail } from "@/types/api";
 
 export default function PassageDetailPage() {
@@ -28,7 +28,8 @@ export default function PassageDetailPage() {
   const rows: [string, React.ReactNode][] = [
     ["Reçu le", formatDateTime(passage.received_at)],
     ["Capturé le", formatDateTime(passage.captured_at)],
-    ["Plaque lue", <span className="font-mono">{passage.plate_text ?? "—"}</span>],
+    ["Plaque lue", <span className="font-mono">{plateLabel(passage.plate_text)}</span>],
+    ...(passage.anonymized_at ? [["Anonymisé le", formatDateTime(passage.anonymized_at)] as [string, React.ReactNode]] : []),
     ["Confiance lecture", percent(passage.ocr_conf)],
     ["Confiance détection", percent(passage.det_conf)],
     ["Décision", <DecisionBadge decision={passage.decision} />],
@@ -46,18 +47,18 @@ export default function PassageDetailPage() {
 
   return (
     <>
-      <PageTitle title={`Passage ${passage.plate_text ?? ""}`} subtitle={formatDateTime(passage.received_at)} actions={<Link to="/passages" className="text-sm text-sky-300 hover:underline">← Passages</Link>} />
+      <PageTitle title={`Passage ${plateLabel(passage.plate_text, "")}`} subtitle={formatDateTime(passage.received_at)} actions={<Link to="/passages" className="text-sm text-sky-300 hover:underline">← Passages</Link>} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CaptureFrame passage={passage} className="w-full rounded-lg" />
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <p className="mb-1 text-xs text-slate-400">Plaque</p>
-              <PassageImage passageId={passage.id} kind="plate" fit="contain" className="h-20 w-full rounded-lg bg-slate-950" />
+              <PassageImage passageId={passage.id} kind="plate" fit="contain" available={!!passage.plate_crop_key} className="h-20 w-full rounded-lg bg-slate-950" />
             </div>
             <div>
               <p className="mb-1 text-xs text-slate-400">Véhicule</p>
-              <PassageImage passageId={passage.id} kind="vehicle" className="h-20 w-full rounded-lg" />
+              <PassageImage passageId={passage.id} kind="vehicle" available={!!passage.vehicle_crop_key} className="h-20 w-full rounded-lg" />
             </div>
           </div>
         </Card>

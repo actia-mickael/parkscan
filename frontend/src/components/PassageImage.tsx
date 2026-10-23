@@ -32,14 +32,15 @@ export function presignedImageUrl(passageId: string, kind: ImageKind): Promise<s
   return request;
 }
 
-export function usePresignedImage(passageId: string, kind: ImageKind): { url: string | null; failed: boolean } {
+export function usePresignedImage(passageId: string, kind: ImageKind, available = true): { url: string | null; failed: boolean } {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setUrl(null);
-    setFailed(false);
+    setFailed(!available);
+    if (!available) return undefined; // image supprimée (rétention) ou jamais produite : pas d'appel
     presignedImageUrl(passageId, kind)
       .then((value) => {
         if (!cancelled) setUrl(value);
@@ -50,7 +51,7 @@ export function usePresignedImage(passageId: string, kind: ImageKind): { url: st
     return () => {
       cancelled = true;
     };
-  }, [passageId, kind]);
+  }, [passageId, kind, available]);
 
   return { url, failed };
 }
@@ -61,14 +62,16 @@ export default function PassageImage({
   className = "",
   alt,
   fit = "cover",
+  available = true,
 }: {
   passageId: string;
   kind: ImageKind;
   className?: string;
   alt?: string;
   fit?: "cover" | "contain";
+  available?: boolean;
 }) {
-  const { url, failed } = usePresignedImage(passageId, kind);
+  const { url, failed } = usePresignedImage(passageId, kind, available);
   const [broken, setBroken] = useState(false);
 
   useEffect(() => {

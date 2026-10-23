@@ -105,3 +105,7 @@ class Passage(Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     ml_latency_ms: Mapped[int | None] = mapped_column(Integer)
     model_versions: Mapped[dict[str, str] | None] = mapped_column(JSONB)
+
+    # Rétention (ADR-011) : images supprimées, plaque remplacée par un haché
+    images_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

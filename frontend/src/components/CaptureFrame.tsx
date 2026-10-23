@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { SyntheticEvent } from "react";
 
 import { usePresignedImage } from "@/components/PassageImage";
-import { percent } from "@/lib/format";
+import { percent, plateLabel } from "@/lib/format";
 import type { PassageRead } from "@/types/api";
 
 // Image complète d'une capture avec, par-dessus, les zones détectées par le service ML :
@@ -37,7 +37,7 @@ export default function CaptureFrame({
   showBoxes?: boolean;
   className?: string;
 }) {
-  const { url, failed } = usePresignedImage(passage.id, "full");
+  const { url, failed } = usePresignedImage(passage.id, "full", !!passage.image_key);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [broken, setBroken] = useState(false);
 
@@ -71,7 +71,7 @@ export default function CaptureFrame({
       {showBoxes && plate && (
         <div className="pointer-events-none absolute border-2 border-sky-300" style={plate}>
           <span className={`absolute -top-6 whitespace-nowrap rounded bg-sky-300 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-950 ${plateOnRight ? "right-0" : "left-0"}`}>
-            {passage.plate_text ?? "?"} · {percent(passage.ocr_conf)}
+            {plateLabel(passage.plate_text, "?")} · {percent(passage.ocr_conf)}
           </span>
         </div>
       )}

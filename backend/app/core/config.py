@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     min_dataset_size: int = 500
     presign_expires_seconds: int = 300
 
+    # Rétention (ADR-011) : au-delà, images supprimées et plaques hachées. Défaut global,
+    # surchargeable par locataire puis par site ; 0 = conservation illimitée.
+    retention_days: int = 30
+    retention_interval_hours: int = 24  # tâche périodique du backend ; 0 = désactivée
+    anonymization_secret: str = ""  # clé du hachage des plaques ; vide : dérivée de jwt_secret
+
     # Service ML
     ml_url: str = "http://ml:8002"
     # Une inférence à froid (service inactif depuis un moment) prend jusqu'à ~750 ms côté ML :

@@ -43,8 +43,16 @@ Les images de `backend/app/seed/demo_images/` sont des photos libres dont la pla
 4. Les captures apparaissent en direct dans « Caméras » (image, zones véhicule et plaque détectées, plaque lue avec sa confiance) et dans « Passages » ; la validation d'un écart met à jour la marque déclarée du véhicule et copie l'image vers le jeu d'entraînement.
 5. Registre de modèles : `make mlops-up` (MLflow et sa base) puis `make mlops-seed-models` (enregistre les poids de `ml/weights` avec l'alias `production` et recharge le service ML). La page « Modèles » du back-office passe de « Poids locaux » à « Registre MLflow » avec le numéro de version ; sans le profil `mlops`, le service ML se replie sur les poids locaux (ADR-007).
 6. Réentraînement : avec `MIN_DATASET_SIZE=20` dans `.env`, valider une vingtaine d'écarts (rejouer `make edge-sim` autant de fois que nécessaire), puis `make mlops-trigger-training` (ou attendre le dimanche 03:00). Le DAG `brand_training` fige une version du jeu, affine le classifieur dans l'image `trainer` et enregistre un candidat dans MLflow ; le DAG `brand_promotion` le compare à la production sur le même jeu de validation, promeut ou rejette, et recharge le service ML. La page « Modèles » affiche les versions et les décisions (ADR-008, ADR-009).
+7. Rétention : `make backend-retention DRY=1` compte les passages au-delà de la durée de conservation (30 jours par défaut, réglable par locataire et par site) ; sans `DRY`, leurs images sont supprimées du stockage et leurs plaques remplacées par un haché. Le backend le fait aussi chaque jour tout seul, et le DAG `retention` le trace dans Airflow (ADR-011, `docs/privacy.md`).
 
 `make help` liste toutes les commandes. Tout passe par `docker compose exec` : rien ne s'exécute hors conteneur.
+
+## Documentation
+
+- [Architecture](docs/architecture.md) : services, flux, données.
+- [Runbook](docs/runbook.md) : exploitation au quotidien, incidents, retour arrière d'un modèle.
+- [Données personnelles](docs/privacy.md) : inventaire, rétention, anonymisation, droits.
+- [Décisions d'architecture](docs/adr/) : ADR-001 à ADR-012.
 
 ## Rechargement à chaud sous WSL2
 

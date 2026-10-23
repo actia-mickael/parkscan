@@ -19,6 +19,7 @@ from app.schemas.common import Page
 from app.schemas.mismatch import MismatchRead, MismatchStats, RejectRequest, ValidateRequest
 from app.services.brands import ensure_brand
 from app.services.effective_settings import resolve
+from app.services.images import blur_region_jpeg, plate_rect_in_vehicle
 from app.services.sites import get_site_in_scope, scope_filter
 from app.services.storage import Storage
 
@@ -27,10 +28,22 @@ log = get_logger(__name__)
 
 
 def copy_to_dataset(
-    storage: Storage, src_bucket: str, src_key: str, dst_bucket: str, dst_key: str
+    storage: Storage,
+    src_bucket: str,
+    src_key: str,
+    dst_bucket: str,
+    dst_key: str,
+    plate_rect: list[int] | None = None,
 ) -> None:
+    """Copie le crop véhicule vers le jeu étiqueté, plaque floutée (ADR-011) : le jeu
+    d'entraînement ne contient aucune donnée identifiante. Sans zone de plaque connue, copie telle
+    quelle."""
     try:
-        storage.copy(src_bucket, src_key, dst_bucket, dst_key)
+        if plate_rect is None:
+            storage.copy(src_bucket, src_key, dst_bucket, dst_key)
+        else:
+            data = storage.get_bytes(src_bucket, src_key)
+            storage.put_bytes(dst_bucket, dst_key, blur_region_jpeg(data, plate_rect))
     except Exception:
         log.exception("dataset_copy_failed", key=dst_key)
 
@@ -147,6 +160,7 @@ async def validate_mismatch(
             vehicle.declared_brand = final_brand
 
     settings = get_settings()
+    passage = await session.get(Passage, review.passage_id)
     if review.source_crop_key:
         review.dataset_key = f"labeled/{final_brand}/{review.id}.jpg"
         background.add_task(
@@ -156,10 +170,10 @@ async def validate_mismatch(
             review.source_crop_key,
             settings.s3_bucket_dataset,
             review.dataset_key,
+            plate_rect_in_vehicle(passage.plate_bbox, passage.vehicle_bbox) if passage else None,
         )
     await session.commit()
     await session.refresh(review)
-    passage = await session.get(Passage, review.passage_id)
     return _read(review, passage)
 
 

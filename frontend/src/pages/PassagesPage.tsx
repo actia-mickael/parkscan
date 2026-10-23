@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { errorMessage } from "@/api/client";
 import { passagesApi } from "@/api/endpoints";
 import { Button, DecisionBadge, EmptyState, ErrorBanner, PageTitle, Pagination, StatusBadge, Table, inputClass } from "@/components/ui";
-import { formatDateTime, percent, reasonLabel } from "@/lib/format";
+import { formatDateTime, percent, plateLabel, reasonLabel } from "@/lib/format";
 import { useSiteStore } from "@/stores/siteStore";
 import type { Page, PassageRead } from "@/types/api";
 
@@ -99,7 +99,7 @@ export default function PassagesPage() {
                   {formatDateTime(p.received_at)}
                 </Link>
               </td>
-              <td className="px-3 py-2 font-mono text-slate-100">{p.plate_text ?? "—"}</td>
+              <td className={`px-3 py-2 font-mono ${p.anonymized_at ? "text-slate-500" : "text-slate-100"}`}>{plateLabel(p.plate_text)}</td>
               <td className="px-3 py-2">
                 <DecisionBadge decision={p.decision} />
               </td>

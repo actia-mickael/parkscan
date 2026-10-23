@@ -108,6 +108,12 @@ class MemoryStorage:
     def exists(self, bucket: str, key: str) -> bool:
         return (bucket, key) in self.objects
 
+    def get_bytes(self, bucket: str, key: str) -> bytes:
+        return self.objects[(bucket, key)]
+
+    def delete(self, bucket: str, key: str) -> None:
+        self.objects.pop((bucket, key), None)
+
     def presigned_get_url(self, bucket: str, key: str, expires_in: int) -> str:
         return f"http://storage.test/{bucket}/{key}?expires={expires_in}"
 

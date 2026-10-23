@@ -191,6 +191,8 @@ export interface PassageRead {
   latency_ms: number | null;
   ml_latency_ms: number | null;
   model_versions: Record<string, string> | null;
+  images_purged_at: string | null;
+  anonymized_at: string | null;
 }
 
 export interface PassageDetail extends PassageRead {

@@ -13,7 +13,7 @@ class EffectiveSettings:
     brand_threshold: float = 0.7
     vehicle_threshold: float = 0.25
     min_dataset_size: int = field(default_factory=lambda: get_settings().min_dataset_size)
-    retention_days: int = 30
+    retention_days: int = field(default_factory=lambda: get_settings().retention_days)
 
 
 def resolve(

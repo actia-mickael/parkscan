@@ -115,10 +115,12 @@ async def test_dataset_version_builds_manifest_and_exports(
 
 
 async def test_versions_and_promotion_flow(client: AsyncClient, admin: User, agent: User) -> None:
+    # Nom unique : la base de dev partagée contient de vraies versions de brand_classifier.
+    name = f"test_model_{uuid.uuid4().hex[:8]}"
     create = await client.post(
         "/api/v1/models/versions",
         json={
-            "name": "brand_classifier",
+            "name": name,
             "version": 2,
             "run_id": "abc",
             "metrics": {"accuracy": 0.9},
@@ -135,7 +137,7 @@ async def test_versions_and_promotion_flow(client: AsyncClient, admin: User, age
     promote = await client.post(
         "/api/v1/models/promotions",
         json={
-            "name": "brand_classifier",
+            "name": name,
             "version": 2,
             "decision": "promoted",
             "reason": "première production",
@@ -151,7 +153,7 @@ async def test_versions_and_promotion_flow(client: AsyncClient, admin: User, age
     second = await client.post(
         "/api/v1/models/promotions",
         json={
-            "name": "brand_classifier",
+            "name": name,
             "version": 3,
             "decision": "promoted",
             "reason": "meilleure",
@@ -162,7 +164,7 @@ async def test_versions_and_promotion_flow(client: AsyncClient, admin: User, age
     rejected = await client.post(
         "/api/v1/models/promotions",
         json={
-            "name": "brand_classifier",
+            "name": name,
             "version": 4,
             "decision": "rejected",
             "reason": "moins bonne",
@@ -172,9 +174,11 @@ async def test_versions_and_promotion_flow(client: AsyncClient, admin: User, age
     assert rejected.status_code == 201
 
     versions = (await client.get("/api/v1/models/versions", headers=auth_headers(agent))).json()
-    status_by_version = {
-        v["version"]: v["status"] for v in versions if v["name"] == "brand_classifier"
-    }
+    status_by_version = {v["version"]: v["status"] for v in versions if v["name"] == name}
     assert status_by_version == {2: "previous", 3: "production", 4: "rejected"}
-    promotions = (await client.get("/api/v1/models/promotions", headers=auth_headers(admin))).json()
-    assert [p["decision"] for p in promotions[:3]] == ["rejected", "promoted", "promoted"]
+    promotions = [
+        p
+        for p in (await client.get("/api/v1/models/promotions", headers=auth_headers(admin))).json()
+        if p["name"] == name
+    ]
+    assert [p["decision"] for p in promotions] == ["rejected", "promoted", "promoted"]

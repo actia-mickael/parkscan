@@ -61,3 +61,13 @@ export const OUTCOME_LABELS: Record<ReviewOutcome, string> = {
 export function reasonLabel(reason: string): string {
   return REASON_LABELS[reason] ?? reason;
 }
+
+export function isAnonymized(plate: string | null | undefined): boolean {
+  return !!plate && plate.startsWith("anon:");
+}
+
+/** Plaque affichable : « anonymisée » quand la rétention l'a remplacée par un haché. */
+export function plateLabel(plate: string | null | undefined, empty = "—"): string {
+  if (!plate) return empty;
+  return isAnonymized(plate) ? "anonymisée" : plate;
+}

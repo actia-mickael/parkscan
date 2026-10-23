@@ -92,7 +92,7 @@ export default function MismatchesPage() {
           {data?.items.map((item) => (
             <Card key={item.id}>
               <div className="flex gap-4">
-                <PassageImage passageId={item.passage_id} kind="vehicle" className="h-32 w-44 shrink-0 rounded-lg" alt="véhicule" />
+                <PassageImage passageId={item.passage_id} kind="vehicle" available={!!item.source_crop_key} className="h-32 w-44 shrink-0 rounded-lg" alt="véhicule" />
                 <div className="min-w-0 flex-1 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <Link to={`/passages/${item.passage_id}`} className="font-mono text-sky-300 hover:underline">
