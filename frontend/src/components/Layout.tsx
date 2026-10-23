@@ -8,6 +8,7 @@ import { useUiStore } from "@/stores/uiStore";
 
 const NAV = [
   { to: "/", label: "Tableau de bord", end: true },
+  { to: "/cameras", label: "Caméras" },
   { to: "/passages", label: "Passages" },
   { to: "/mismatches", label: "Écarts de marque" },
   { to: "/residents", label: "Résidents" },

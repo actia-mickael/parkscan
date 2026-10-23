@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import Layout from "@/components/Layout";
+import CamerasPage from "@/pages/CamerasPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import MismatchesPage from "@/pages/MismatchesPage";
@@ -46,6 +47,7 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />
+          <Route path="cameras" element={<CamerasPage />} />
           <Route path="passages" element={<PassagesPage />} />
           <Route path="passages/:id" element={<PassageDetailPage />} />
           <Route path="mismatches" element={<MismatchesPage />} />

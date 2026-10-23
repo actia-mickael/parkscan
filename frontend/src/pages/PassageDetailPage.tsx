@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { errorMessage } from "@/api/client";
 import { passagesApi } from "@/api/endpoints";
+import CaptureFrame from "@/components/CaptureFrame";
 import PassageImage from "@/components/PassageImage";
 import { Card, DecisionBadge, ErrorBanner, PageTitle, StatusBadge } from "@/components/ui";
 import { formatDateTime, percent, reasonLabel } from "@/lib/format";
@@ -33,9 +34,9 @@ export default function PassageDetailPage() {
     ["Décision", <DecisionBadge decision={passage.decision} />],
     ["Motif", reasonLabel(passage.decision_reason)],
     ["Statut", <StatusBadge status={passage.status} />],
-    ["Véhicule détecté", passage.vehicle_class ?? "—"],
-    ["Marque prédite", passage.brand_pred ? `${passage.brand_pred} (${percent(passage.brand_conf)})` : "—"],
-    ["Marque déclarée", passage.declared_brand_snapshot ?? "—"],
+    ["Véhicule détecté", <span className="capitalize">{passage.vehicle_class ?? "—"}</span>],
+    ["Marque prédite", passage.brand_pred ? <span className="capitalize">{`${passage.brand_pred} (${percent(passage.brand_conf)})`}</span> : "—"],
+    ["Marque déclarée", <span className="capitalize">{passage.declared_brand_snapshot ?? "—"}</span>],
     ["Écart de marque", passage.is_mismatch ? "oui" : "non"],
     ["Latence totale", passage.latency_ms != null ? `${passage.latency_ms} ms` : "—"],
     ["Latence ML", passage.ml_latency_ms != null ? `${passage.ml_latency_ms} ms` : "—"],
@@ -48,11 +49,11 @@ export default function PassageDetailPage() {
       <PageTitle title={`Passage ${passage.plate_text ?? ""}`} subtitle={formatDateTime(passage.received_at)} actions={<Link to="/passages" className="text-sm text-sky-300 hover:underline">← Passages</Link>} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <PassageImage passageId={passage.id} kind="full" className="w-full rounded-lg" alt="capture complète" />
+          <CaptureFrame passage={passage} className="w-full rounded-lg" />
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <p className="mb-1 text-xs text-slate-400">Plaque</p>
-              <PassageImage passageId={passage.id} kind="plate" className="h-20 w-full rounded-lg" />
+              <PassageImage passageId={passage.id} kind="plate" fit="contain" className="h-20 w-full rounded-lg bg-slate-950" />
             </div>
             <div>
               <p className="mb-1 text-xs text-slate-400">Véhicule</p>
@@ -65,7 +66,7 @@ export default function PassageDetailPage() {
             {rows.map(([label, value]) => (
               <div key={label} className="flex justify-between gap-3 border-b border-slate-800/60 pb-2">
                 <dt className="text-slate-400">{label}</dt>
-                <dd className="text-right capitalize text-slate-100">{value}</dd>
+                <dd className="text-right text-slate-100">{value}</dd>
               </div>
             ))}
           </dl>
