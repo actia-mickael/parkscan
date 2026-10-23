@@ -16,10 +16,9 @@ import torch
 import torch.nn.functional as functional
 from fast_plate_ocr import LicensePlateRecognizer
 from PIL import Image
-from torchvision import transforms
-from torchvision.models import efficientnet_b0
 from ultralytics import YOLO
 
+from parkscan_ml.brand import ARCH, BRAND_INPUT_SIZE, brand_eval_transform, build_brand_model
 from parkscan_ml.conditions import Conditions, estimate_conditions
 from parkscan_ml.logging import get_logger
 from parkscan_ml.plates import normalize_plate
@@ -27,9 +26,6 @@ from parkscan_ml.plates import normalize_plate
 log = get_logger(__name__)
 
 VEHICLE_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}  # classes COCO
-BRAND_INPUT_SIZE = 224
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
 
 BBox = tuple[int, int, int, int]
 
@@ -108,19 +104,12 @@ class BrandClassifier:
             )
         self.labels = labels or [f"class_{i}" for i in range(num_classes)]
 
-        model = efficientnet_b0(weights=None)
-        model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, num_classes)
+        model = build_brand_model(num_classes)
         model.load_state_dict(state_dict)
         self.model = model.to(device).eval()
         self.device = device
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize((BRAND_INPUT_SIZE, BRAND_INPUT_SIZE)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-            ]
-        )
-        self.details.update({"arch": "efficientnet_b0", "img_size": BRAND_INPUT_SIZE})
+        self.transform = brand_eval_transform()
+        self.details.update({"arch": ARCH, "img_size": BRAND_INPUT_SIZE})
 
     @staticmethod
     def _load_checkpoint(path: Path, device: str) -> Any:

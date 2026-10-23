@@ -8,10 +8,12 @@ import type {
   MeResponse,
   MismatchRead,
   MismatchStats,
+  ModelVersionRead,
   Page,
   PassageDetail,
   PassageRead,
   PresignedImage,
+  PromotionRead,
   ResidentCreate,
   ResidentRead,
   ServedModels,
@@ -97,4 +99,6 @@ export const mismatchesApi = {
 export const modelsApi = {
   get: (): Promise<AxiosResponse<ServedModels>> => api.get("/models"),
   reload: (): Promise<AxiosResponse<ServedModels>> => api.post("/models/reload"),
+  versions: (): Promise<AxiosResponse<ModelVersionRead[]>> => api.get("/models/versions"),
+  promotions: (): Promise<AxiosResponse<PromotionRead[]>> => api.get("/models/promotions"),
 };

@@ -3,9 +3,9 @@ name: ML
 on:
   push:
     branches: [main]
-    paths: ["ml/**", ".github/workflows/ml-ci.yml"]
+    paths: ["ml/**", "airflow/**", ".github/workflows/ml-ci.yml"]
   pull_request:
-    paths: ["ml/**", ".github/workflows/ml-ci.yml"]
+    paths: ["ml/**", "airflow/**", ".github/workflows/ml-ci.yml"]
 
 jobs:
   ml:
@@ -22,10 +22,10 @@ jobs:
           enable-cache: true
       - name: Installer les dépendances (torch CPU)
         run: uv sync --frozen --extra dev
-      - name: Lint
+      - name: Lint (service ML, entraînement, DAG Airflow)
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
+          uv run ruff check . ../airflow
+          uv run ruff format --check . ../airflow
       - name: Tests (pipeline simulé)
         run: uv run pytest -q
 
@@ -38,3 +38,5 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Build ml (prod, avec préchargement des modèles génériques)
         run: docker build --target prod -t parkscan-ml:ci ./ml
+      - name: Build trainer (image d'entraînement lancée par Airflow)
+        run: docker build --target trainer -t parkscan-trainer:ci ./ml

@@ -7,7 +7,10 @@ FRONTEND := $(COMPOSE) exec frontend
         backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed \
         frontend-shell frontend-typecheck db-shell \
         ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim \
-        mlops-up mlops-down mlops-logs mlops-seed-models
+        mlops-up mlops-down mlops-logs mlops-seed-models mlops-trigger-training airflow-logs airflow-shell
+
+# Groupe propriétaire du socket Docker : l'ordonnanceur Airflow en a besoin pour lancer l'image trainer.
+export DOCKER_GID ?= $(shell stat -c %g /var/run/docker.sock 2>/dev/null || echo 0)
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -44,6 +47,9 @@ health: ## Vérifie l'état des services
 	@echo
 	@echo "--- mlflow /health (profil mlops)"
 	@curl -fsS http://localhost:$${MLFLOW_PORT:-5000}/health || echo "mlflow arrêté (make mlops-up)"
+	@echo
+	@echo "--- airflow /api/v2/version (profil mlops)"
+	@curl -fsS http://localhost:$${AIRFLOW_PORT:-8080}/api/v2/version || echo "airflow arrêté (make mlops-up)"
 	@echo
 
 backend-shell: ## Ouvre un shell dans le backend
@@ -115,15 +121,29 @@ ml-fetch-weights: ## Télécharge les poids produit (détecteur de plaque, class
 
 # --- Profil mlops : registre de modèles MLflow --------------------------------------------------
 
-mlops-up: ## Démarre le profil mlops (MLflow + sa base) en plus de la stack cœur
-	$(COMPOSE) --profile mlops build mlflow
+mlops-up: ## Démarre le profil mlops (MLflow, Airflow, image trainer) en plus de la stack cœur
+	$(COMPOSE) --profile mlops --profile tools build mlflow airflow-apiserver trainer
 	$(COMPOSE) --profile mlops up -d
 
 mlops-down: ## Arrête les services du profil mlops (la stack cœur reste)
-	$(COMPOSE) --profile mlops stop mlflow mlflow-db
+	$(COMPOSE) --profile mlops stop airflow-scheduler airflow-dag-processor airflow-apiserver airflow-db mlflow mlflow-db
 
-mlops-logs: ## Journaux de MLflow
-	$(COMPOSE) --profile mlops logs -f --tail=100 mlflow
+mlops-logs: ## Journaux de MLflow et des composants Airflow
+	$(COMPOSE) --profile mlops logs -f --tail=100 mlflow airflow-scheduler airflow-apiserver airflow-dag-processor
+
+airflow-logs: ## Journaux de l'ordonnanceur Airflow (où s'exécutent les tâches)
+	$(COMPOSE) --profile mlops logs -f --tail=200 airflow-scheduler
+
+airflow-shell: ## Ouvre un shell dans l'ordonnanceur Airflow (CLI airflow disponible)
+	$(COMPOSE) --profile mlops exec airflow-scheduler bash
+
+mlops-trigger-training: ## Déclenche le DAG d'entraînement (FORCE=true ignore le seuil d'écarts nouveaux)
+	@TOKEN=$$(curl -fsS -X POST http://localhost:$${AIRFLOW_PORT:-8080}/auth/token -H 'Content-Type: application/json' \
+	  -d "{\"username\":\"$$(grep '^AIRFLOW_ADMIN_USER=' .env | cut -d= -f2)\",\"password\":\"$$(grep '^AIRFLOW_ADMIN_PASSWORD=' .env | cut -d= -f2)\"}" \
+	  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])') && \
+	curl -fsS -X POST http://localhost:$${AIRFLOW_PORT:-8080}/api/v2/dags/brand_training/dagRuns \
+	  -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+	  -d '{"logical_date": null, "conf": {"force": $(or $(FORCE),false)}}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print("run", d["dag_run_id"], d["state"])'
 
 mlops-seed-models: ## Enregistre les poids locaux dans MLflow (alias production) puis recharge le service ML
 	$(COMPOSE) exec ml python scripts/seed_mlflow.py

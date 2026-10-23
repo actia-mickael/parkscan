@@ -281,3 +281,35 @@ export interface ServedModels {
   models: Record<string, ServedModel>;
   labels: string[];
 }
+
+export type ModelVersionStatus = "candidate" | "production" | "previous" | "rejected" | "archived";
+export type PromotionDecision = "promoted" | "rejected";
+
+export interface ModelVersionRead {
+  id: string;
+  name: string;
+  version: number;
+  run_id: string | null;
+  source: string | null;
+  status: ModelVersionStatus;
+  dataset_version: string | null;
+  metrics: Record<string, number> | null;
+  baseline_metrics: Record<string, number> | null;
+  labels_count: number | null;
+  promoted_at: string | null;
+  created_at: string;
+}
+
+export interface PromotionRead {
+  id: string;
+  model_version_id: string;
+  name: string;
+  version: number;
+  decision: PromotionDecision;
+  reason: string | null;
+  candidate_metrics: Record<string, number> | null;
+  baseline_metrics: Record<string, number> | null;
+  previous_version: number | null;
+  decided_by: string;
+  created_at: string;
+}

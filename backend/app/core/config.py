@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
     s3_bucket_captures: str = "parkscan-captures"
     s3_bucket_dataset: str = "parkscan-dataset"
+    # Nombre d'écarts validés (non encore exportés) qui déclenche un réentraînement (défaut global,
+    # surchargeable par locataire dans ses réglages ; 20 pour la démo)
+    min_dataset_size: int = 500
     presign_expires_seconds: int = 300
 
     # Service ML

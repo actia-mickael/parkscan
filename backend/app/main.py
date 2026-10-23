@@ -19,6 +19,7 @@ from app.api import (
     residents,
     sites,
     tenants,
+    training,
     users,
     vehicles,
 )
@@ -76,6 +77,7 @@ for router in (
     passages.router,
     mismatches.router,
     models.router,
+    training.router,
     dashboard.router,
 ):
     app.include_router(router, prefix=API_PREFIX)

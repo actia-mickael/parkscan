@@ -3,6 +3,12 @@
 from app.db.models.api_key import ApiKey
 from app.db.models.brand import Brand
 from app.db.models.mismatch_review import MismatchReview, ReviewOutcome, ReviewStatus
+from app.db.models.model_version import (
+    ModelPromotion,
+    ModelVersion,
+    ModelVersionStatus,
+    PromotionDecision,
+)
 from app.db.models.passage import Decision, Passage, PassageStatus
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.resident import Resident
@@ -16,8 +22,12 @@ __all__ = [
     "Brand",
     "Decision",
     "MismatchReview",
+    "ModelPromotion",
+    "ModelVersion",
+    "ModelVersionStatus",
     "Passage",
     "PassageStatus",
+    "PromotionDecision",
     "RefreshToken",
     "Resident",
     "ReviewOutcome",

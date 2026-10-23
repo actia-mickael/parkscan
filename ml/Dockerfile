@@ -42,3 +42,17 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     && chown -R app:app /app /opt/venv /opt/home /opt/models
 USER app
 CMD ["uvicorn", "parkscan_ml.main:app", "--host", "0.0.0.0", "--port", "8002"]
+
+# Image d'entraînement : mêmes versions torch/torchvision que le service (compatibilité des
+# checkpoints garantie par construction), plus boto3 pour le jeu de données. Lancée par Airflow.
+FROM base AS trainer
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev --extra train
+COPY . .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --extra train \
+    && useradd --system --uid 1000 trainer \
+    && mkdir -p /tmp/parkscan-train \
+    && chown -R trainer:trainer /app /opt/venv /opt/home /tmp/parkscan-train
+USER trainer
+CMD ["python", "-m", "training.train_brand", "--help"]

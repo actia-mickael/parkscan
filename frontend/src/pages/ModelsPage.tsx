@@ -5,7 +5,8 @@ import { modelsApi } from "@/api/endpoints";
 import { Button, Card, EmptyState, ErrorBanner, PageTitle, StatTile, Table } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { ServedModels } from "@/types/api";
+import { formatDateTime, percent } from "@/lib/format";
+import type { ModelVersionRead, ModelVersionStatus, PromotionRead, ServedModels } from "@/types/api";
 
 const MODEL_LABELS: Record<string, string> = {
   plate_detector: "Détecteur de plaque",
@@ -22,6 +23,21 @@ function sourceLabel(source: string): string {
   return source;
 }
 
+const VERSION_STATUS: Record<ModelVersionStatus, { label: string; cls: string }> = {
+  candidate: { label: "Candidat", cls: "bg-sky-500/15 text-sky-300" },
+  production: { label: "Production", cls: "bg-emerald-500/15 text-emerald-300" },
+  previous: { label: "Précédente", cls: "bg-slate-700 text-slate-200" },
+  rejected: { label: "Rejetée", cls: "bg-red-500/15 text-red-300" },
+  archived: { label: "Archivée", cls: "bg-slate-800 text-slate-400" },
+};
+
+function metricCell(metrics: Record<string, number> | null, baseline: Record<string, number> | null, key: string): string {
+  const value = metrics?.[key];
+  if (value === undefined) return "—";
+  const ref = baseline?.[key];
+  return ref === undefined ? percent(value) : `${percent(value)} (réf. ${percent(ref)})`;
+}
+
 function formatDetail(value: string | number | null): string {
   if (value === null) return "—";
   if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -32,6 +48,8 @@ export default function ModelsPage() {
   const user = useAuthStore((s) => s.user);
   const notify = useUiStore((s) => s.notify);
   const [data, setData] = useState<ServedModels | null>(null);
+  const [versions, setVersions] = useState<ModelVersionRead[]>([]);
+  const [promotions, setPromotions] = useState<PromotionRead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -43,6 +61,14 @@ export default function ModelsPage() {
         setError(null);
       })
       .catch((err: unknown) => setError(errorMessage(err)));
+    modelsApi
+      .versions()
+      .then((res) => setVersions(res.data))
+      .catch(() => undefined);
+    modelsApi
+      .promotions()
+      .then((res) => setPromotions(res.data))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -115,6 +141,59 @@ export default function ModelsPage() {
             })}
           </Table>
         ))}
+
+      <Card className="mt-6">
+        <h2 className="mb-3 text-sm font-medium text-slate-300">Versions issues du réentraînement</h2>
+        {versions.length === 0 ? (
+          <EmptyState>Aucune version entraînée pour l'instant : le DAG d'entraînement n'a pas encore produit de candidat.</EmptyState>
+        ) : (
+          <Table head={["Modèle", "Version", "Statut", "Jeu de données", "Exactitude", "Top 3", "F1 macro", "Marques", "Créée"]}>
+            {versions.map((v) => (
+              <tr key={v.id}>
+                <td className="px-3 py-2 text-slate-100">{MODEL_LABELS[v.name] ?? v.name}</td>
+                <td className="px-3 py-2 font-mono text-slate-100">v{v.version}</td>
+                <td className="px-3 py-2">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${VERSION_STATUS[v.status].cls}`}>
+                    {VERSION_STATUS[v.status].label}
+                  </span>
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-400">{v.dataset_version ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-300">{metricCell(v.metrics, v.baseline_metrics, "accuracy")}</td>
+                <td className="px-3 py-2 text-slate-300">{metricCell(v.metrics, v.baseline_metrics, "top3_accuracy")}</td>
+                <td className="px-3 py-2 text-slate-300">{metricCell(v.metrics, v.baseline_metrics, "f1_macro")}</td>
+                <td className="px-3 py-2 text-slate-400">{v.labels_count ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-400">{formatDateTime(v.created_at)}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="mb-3 text-sm font-medium text-slate-300">Décisions de promotion</h2>
+        {promotions.length === 0 ? (
+          <EmptyState>Aucune décision enregistrée.</EmptyState>
+        ) : (
+          <Table head={["Date", "Version", "Décision", "Motif", "Remplace", "Par"]}>
+            {promotions.map((p) => (
+              <tr key={p.id}>
+                <td className="px-3 py-2 text-slate-400">{formatDateTime(p.created_at)}</td>
+                <td className="px-3 py-2 font-mono text-slate-100">
+                  {MODEL_LABELS[p.name] ?? p.name} v{p.version}
+                </td>
+                <td className="px-3 py-2">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${p.decision === "promoted" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+                    {p.decision === "promoted" ? "Promue" : "Rejetée"}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-xs text-slate-300">{p.reason ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-400">{p.previous_version != null ? `v${p.previous_version}` : "—"}</td>
+                <td className="px-3 py-2 text-xs text-slate-500">{p.decided_by}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
 
       {data && data.labels.length > 0 && (
         <Card className="mt-6">

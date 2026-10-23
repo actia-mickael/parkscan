@@ -1,7 +1,9 @@
 """Seuils et réglages effectifs : site > locataire > défauts."""
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from typing import Any
+
+from app.core.config import get_settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,7 +12,7 @@ class EffectiveSettings:
     ocr_threshold: float = 0.6
     brand_threshold: float = 0.7
     vehicle_threshold: float = 0.25
-    min_dataset_size: int = 500
+    min_dataset_size: int = field(default_factory=lambda: get_settings().min_dataset_size)
     retention_days: int = 30
 
 
