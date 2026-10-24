@@ -68,6 +68,18 @@ def fetch_manifest(client: Any, bucket: str, dataset_version: str) -> list[Sampl
     return parse_manifest(body)
 
 
+def fetch_reference(client: Any, bucket: str, prefix: str) -> list[Sample]:
+    """Jeu de référence multi-marques (voir seed_reference.py) ; vide s'il n'a pas été importé."""
+    if not prefix:
+        return []
+    try:
+        body = client.get_object(Bucket=bucket, Key=f"{prefix.strip('/')}/manifest.jsonl")["Body"]
+    except Exception as exc:
+        print(f"[dataset] pas de jeu de référence sous {prefix}/ : {exc}")
+        return []
+    return parse_manifest(body.read().decode("utf-8"))
+
+
 def download(client: Any, bucket: str, samples: list[Sample], work_dir: Path) -> list[Sample]:
     """Télécharge chaque crop dans work_dir/<split>/<marque>/<review_id>.jpg ; ignore les absents."""
     ready: list[Sample] = []

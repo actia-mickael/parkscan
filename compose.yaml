@@ -239,6 +239,9 @@ services:
       target: trainer
     image: ${TRAINER_IMAGE:-parkscan-trainer:dev}
     profiles: ["tools"]
+    env_file: .env  # S3 du jeu de données et MLflow, pour `make mlops-seed-reference`
+    environment:
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-http://mlflow:5000}
     command: ["python", "-m", "training.train_brand", "--help"]
     networks:
       - parkscan_net

@@ -115,14 +115,18 @@ def main(argv: list[str] | None = None) -> int:
 
     # 1. Jeu de données
     s3 = ds.s3_client(settings)
-    samples = ds.fetch_manifest(s3, settings.s3_bucket_dataset, args.dataset_version)
-    samples = ds.download(s3, settings.s3_bucket_dataset, samples, work / "data")
+    labeled = ds.fetch_manifest(s3, settings.s3_bucket_dataset, args.dataset_version)
+    reference = ds.fetch_reference(s3, settings.s3_bucket_dataset, settings.reference_prefix)
+    samples = ds.download(s3, settings.s3_bucket_dataset, [*labeled, *reference], work / "data")
+    labeled_ids = {s.review_id for s in labeled}
     train_samples = [s for s in samples if s.split == "train"]
     val_samples = [s for s in samples if s.split == "val"]
+    labeled_val = [s for s in val_samples if s.review_id in labeled_ids]
     if not train_samples or not val_samples:
         sys.exit(f"[train] jeu insuffisant : {len(train_samples)} train / {len(val_samples)} val")
     print(
-        f"[train] {len(train_samples)} train, {len(val_samples)} val, classes {ds.class_counts(samples)}"
+        f"[train] {len(train_samples)} train, {len(val_samples)} val "
+        f"(écarts validés {len(labeled)}, référence {len(reference)}), classes {ds.class_counts(samples)}"
     )
 
     # 2. Point de départ : production
@@ -163,8 +167,17 @@ def main(argv: list[str] | None = None) -> int:
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     mlflow.set_registry_uri(settings.mlflow_tracking_uri)
     mlflow.set_experiment(settings.experiment)
+    # Deux groupes : le tronc apprend 10 fois moins vite que la tête (au dégel, un taux plein
+    # fait s'effondrer la validation : chute observée de 88 % à 48 % à l'époque 3).
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=settings.lr, weight_decay=settings.weight_decay
+        [
+            {
+                "params": model.features.parameters(),
+                "lr": settings.lr * settings.backbone_lr_factor,
+            },
+            {"params": model.classifier.parameters(), "lr": settings.lr},
+        ],
+        weight_decay=settings.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="max", factor=0.5, patience=1
@@ -189,6 +202,9 @@ def main(argv: list[str] | None = None) -> int:
                 "img_size": BRAND_INPUT_SIZE,
                 "train_samples": len(train_samples),
                 "val_samples": len(val_samples),
+                "labeled_samples": len(labeled),
+                "reference_samples": len(reference),
+                "reference_prefix": settings.reference_prefix if reference else "",
                 "labels_before": len(old_labels),
                 "labels_after": len(labels),
                 **base_info,
@@ -251,6 +267,15 @@ def main(argv: list[str] | None = None) -> int:
         write_json(labels, model_dir / "labels.json")
         digest = sha256(model_dir / "checkpoint.pth")
         metrics = {**final, **{f"baseline_{k}": v for k, v in baseline.items()}}
+        if labeled_val:
+            # Pour information : exactitude sur les seuls écarts validés par les opérateurs
+            labeled_loader = DataLoader(
+                ds.CropDataset(labeled_val, labels, train=False), batch_size=settings.batch_size
+            )
+            l_truth, l_top3, _ = predict_names(model, labeled_loader, labels, device)
+            metrics["labeled_accuracy"] = metrics_from_names(l_truth, l_top3)["accuracy"]
+            b_truth, b_top3, _ = predict_names(baseline_model, labeled_loader, labels, device)
+            metrics["baseline_labeled_accuracy"] = metrics_from_names(b_truth, b_top3)["accuracy"]
         mlflow.log_metrics(metrics)
         mlflow.log_artifacts(str(model_dir), artifact_path="model")
         mlflow.log_artifact(str(artifacts / "confusion_matrix.png"))
@@ -285,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
             "baseline_metrics": baseline,
             "labels_count": len(labels),
             "labels_added": [label for label in labels if label not in old_labels],
+            "labeled_samples": len(labeled),
+            "reference_samples": len(reference),
             "dropped": dropped,
             "best_epoch": best_epoch,
             "seconds": round(time.perf_counter() - started, 1),

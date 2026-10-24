@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import torch
 from PIL import Image
 from torch.utils.data import DataLoader
@@ -84,3 +85,40 @@ def test_dataset_and_prediction_on_tiny_images(tmp_path: Path) -> None:
     assert loss > 0
     confusion_png([[1, 0], [0, 1]], labels, tmp_path / "cm.png")
     assert (tmp_path / "cm.png").stat().st_size > 0
+
+
+class _NoReference:
+    def get_object(self, **_: object) -> dict:
+        raise RuntimeError("NoSuchKey")
+
+
+class _WithReference:
+    def get_object(self, **kwargs: object) -> dict:
+        assert kwargs["Key"] == "reference/manifest.jsonl"
+        body = b'{"key": "reference/bmw/x3_0001.jpg", "brand": "bmw", "split": "val", "review_id": "ref-bmw-x3_0001"}\n'
+        return {"Body": __import__("io").BytesIO(body)}
+
+
+def test_fetch_reference_is_optional() -> None:
+    assert ds.fetch_reference(_NoReference(), "bucket", "reference") == []
+    assert ds.fetch_reference(_WithReference(), "bucket", "") == []
+    samples = ds.fetch_reference(_WithReference(), "bucket", "reference/")
+    assert [(s.brand, s.split, s.review_id) for s in samples] == [("bmw", "val", "ref-bmw-x3_0001")]
+
+
+def test_seed_reference_selection_is_deterministic(tmp_path: Path) -> None:
+    from training.seed_reference import encode, select
+
+    files = []
+    for i in range(6):
+        path = tmp_path / f"clio_{i:04d}.jpg"
+        Image.new("RGB", (900, 600), (i * 20, 60, 90)).save(path)
+        files.append(path)
+    first = select(files, 4, seed=7)
+    assert first == select(list(reversed(files)), 4, seed=7) and len(first) == 4
+    (tmp_path / "clio_0099.jpg").write_bytes(b"pas une image")
+    with pytest.raises(Exception):  # noqa: B017 - Pillow lève UnidentifiedImageError (sous-classe d'OSError)
+        encode(tmp_path / "clio_0099.jpg", max_side=512)
+    data = encode(first[0], max_side=512)
+    with Image.open(__import__("io").BytesIO(data)) as image:
+        assert max(image.size) == 512 and image.mode == "RGB"

@@ -24,9 +24,19 @@ candidat) ne prouve rien : le jeu change à chaque version.
 4. **Décisions persistées côté backend** (`model_versions`, `model_promotions`) : version, raison
    lisible, métriques comparées, version précédente. Le back-office les affiche (page « Modèles »).
 
+5. **Jeu de référence multi-marques.** Les seuls écarts validés sont rares et déséquilibrés (une
+   marque peut dominer) ; entraîner et juger dessus seuls fait oublier les autres marques au modèle
+   et rend la règle aveugle. Un jeu de référence (par défaut 50 photos par marque, issues d'un jeu
+   public de reconnaissance de marques et modèles, ré-encodées sans métadonnées, découpage train/val
+   figé) est importé dans le stockage (`reference/`) et fusionné à chaque entraînement avec les
+   écarts validés. Les métriques de promotion portent sur l'union des deux validations ; l'exactitude
+   sur les seuls écarts validés est journalisée à titre d'information (`labeled_accuracy`).
+
 ## Conséquences
 
 - Un candidat meilleur sur une métrique mais moins bon sur une autre est rejeté : choix assumé,
   la régression silencieuse coûte plus cher qu'un réentraînement différé.
-- Un jeu de validation très petit (démo) rend la règle peu discriminante ; en production, le seuil
-  `MIN_DATASET_SIZE` garantit un jeu significatif.
+- Sans jeu de référence, un jeu de validation très petit (démo) rend la règle peu discriminante ;
+  avec lui, la validation couvre toutes les marques même quand les écarts validés n'en couvrent qu'une.
+- Les photos de référence ont pu servir à l'entraînement initial du modèle : la référence y est
+  favorisée, le candidat aussi ; la comparaison reste équitable car les deux sont jugés sur le même jeu.

@@ -7,7 +7,7 @@ FRONTEND := $(COMPOSE) exec frontend
         backend-shell backend-lint backend-format backend-test backend-migrate backend-revision backend-seed backend-retention \
         frontend-shell frontend-typecheck db-shell \
         ml-shell ml-lint ml-format ml-test ml-logs ml-reload ml-bench ml-fetch-weights edge-sim \
-        mlops-up mlops-down mlops-logs mlops-seed-models mlops-trigger-training airflow-logs airflow-shell
+        mlops-up mlops-down mlops-logs mlops-seed-models mlops-seed-reference mlops-trigger-training airflow-logs airflow-shell
 
 # Groupe propriétaire du socket Docker : l'ordonnanceur Airflow en a besoin pour lancer l'image trainer.
 export DOCKER_GID ?= $(shell stat -c %g /var/run/docker.sock 2>/dev/null || echo 0)
@@ -139,6 +139,11 @@ airflow-logs: ## Journaux de l'ordonnanceur Airflow (où s'exécutent les tâche
 
 airflow-shell: ## Ouvre un shell dans l'ordonnanceur Airflow (CLI airflow disponible)
 	$(COMPOSE) --profile mlops exec airflow-scheduler bash
+
+mlops-seed-reference: ## Importe un jeu de référence multi-marques (SRC=<dossier, un sous-dossier par marque> ; N=50 par marque)
+	$(if $(SRC),,$(error SRC=<dossier d'images, un sous-dossier par marque> requis))
+	$(COMPOSE) --profile tools run --rm -v "$(abspath $(SRC)):/opt/reference:ro" trainer \
+	  python -m training.seed_reference --source /opt/reference --per-brand $(or $(N),50) $(ARGS)
 
 mlops-trigger-training: ## Déclenche le DAG d'entraînement (FORCE=true ignore le seuil d'écarts nouveaux)
 	@TOKEN=$$(curl -fsS -X POST http://localhost:$${AIRFLOW_PORT:-8080}/auth/token -H 'Content-Type: application/json' \

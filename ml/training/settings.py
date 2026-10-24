@@ -13,6 +13,7 @@ class TrainerSettings(BaseSettings):
     freeze_epochs: int = 2  # époques avec le tronc gelé (seule la tête apprend)
     batch_size: int = 16
     lr: float = 1e-3
+    backbone_lr_factor: float = 0.1  # taux du tronc une fois dégelé, relatif à celui de la tête
     weight_decay: float = 1e-4
     min_per_class: int = 20  # images minimum pour qu'une marque inconnue du modèle soit ajoutée
     seed: int = 42
@@ -22,6 +23,8 @@ class TrainerSettings(BaseSettings):
     brand_model: str = "brand_classifier"
     production_alias: str = "production"
     experiment: str = "parkscan-brand-training"
+    # Jeu de référence multi-marques fusionné à chaque entraînement (préfixe S3 ; vide : désactivé)
+    reference_prefix: str = "reference"
 
     mlflow_tracking_uri: str = Field(default="", validation_alias="MLFLOW_TRACKING_URI")
     s3_endpoint_url: str = Field(default="http://garage:3900", validation_alias="S3_ENDPOINT_URL")
